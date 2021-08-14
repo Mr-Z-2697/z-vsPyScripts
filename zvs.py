@@ -4,7 +4,7 @@ import havsfunc as haf
 import xvs
 import mvsfunc as mvf
 
-def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,pel=1,blksize=16,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,show='output'):
+def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,show='output'):
     if lumaonly:
         chromamv=False
         chromaclip=src
@@ -13,7 +13,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     src=src.fmtc.bitdepth(bits=16)
     denoised=sdr=core.resize.Bicubic(src,transfer_in=16,transfer=1,nominal_luminance=nl)
     if mdegrain:
-        denoised=zmde(denoised,tr=2,thsad=thsad,thsadc=thsadc,blksize=blksize,pel=pel,thscd1=thscd1,thscd2=thscd2,chromamv=chromamv)
+        denoised=zmde(denoised,tr=2,thsad=thsad,thsadc=thsadc,blksize=blksize,overlap=overlap,pel=pel,thscd1=thscd1,thscd2=thscd2,chromamv=chromamv)
         if show=='mde':
             return denoised
 
@@ -57,7 +57,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     return output
 
 
-def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130):
+def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130):
     if thsadc==None:
         thsadc=thsad
     last=src
@@ -65,18 +65,20 @@ def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,pel=1,chromamv=True,sharp=2,r
         pref=core.resize.Bicubic(last,range_in_s='limited',range_s='full')
     else:
         pref=last
+    if overlap==None:
+        overlap=blksize//2
     
     sup=core.mv.Super(pref,hpad=blksize,vpad=blksize,sharp=sharp,rfilter=rfilter,pel=pel)
     sup2=core.mv.Super(last,hpad=blksize,vpad=blksize,sharp=sharp,levels=1,pel=pel)
 
-    mvfw=core.mv.Analyse(sup,isb=False,blksize=blksize,overlap=blksize//2,truemotion=truemotion,chroma=chromamv)
-    mvbw=core.mv.Analyse(sup,isb=True,blksize=blksize,overlap=blksize//2,truemotion=truemotion,chroma=chromamv)
+    mvfw=core.mv.Analyse(sup,isb=False,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
+    mvbw=core.mv.Analyse(sup,isb=True,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
     if tr>=2:
-        mvfw2=core.mv.Analyse(sup,isb=False,delta=2,blksize=blksize,overlap=blksize//2,truemotion=truemotion,chroma=chromamv)
-        mvbw2=core.mv.Analyse(sup,isb=True,delta=2,blksize=blksize,overlap=blksize//2,truemotion=truemotion,chroma=chromamv)
+        mvfw2=core.mv.Analyse(sup,isb=False,delta=2,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
+        mvbw2=core.mv.Analyse(sup,isb=True,delta=2,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
     elif tr>=3:
-        mvfw2=core.mv.Analyse(sup,isb=False,delta=3,blksize=blksize,overlap=blksize//2,truemotion=truemotion,chroma=chromamv)
-        mvbw2=core.mv.Analyse(sup,isb=True,delta=3,blksize=blksize,overlap=blksize//2,truemotion=truemotion,chroma=chromamv)
+        mvfw2=core.mv.Analyse(sup,isb=False,delta=3,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
+        mvbw2=core.mv.Analyse(sup,isb=True,delta=3,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
     
     if tr==1:
         last=core.mv.Degrain(last,sup2,mvbw,mvfw,thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2)
