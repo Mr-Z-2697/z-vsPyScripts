@@ -113,5 +113,32 @@ def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=Fa
     cas=core.cas.CAS(last,0.7,planes=[0,1,2])
     cas=mvf.LimitFilter(cas,last,thr=0.3,thrc=0.15,brighten_thr=0.15,elast=4,planes=[0,1,2])
     last=core.std.Expr([cas,last,db],'x y - z +')
-
+    
     return last
+
+#arbitrary crop, result resolution must be compatible with src clip subsampling tho
+def arop(src,left=0,right=0,top=0,bottom=0): #mostly useless experimental function
+    subsw,subsh=[2**src.format.subsampling_w,2**src.format.subsampling_h]
+    if not (top%subsh or bottom%subsh or left%subsw or right%subsw):
+        return core.std.Crop(src,left=left,right=right,top=top,bottom=bottom)
+    else:
+        l,r=[i if not i%subsw else 0 for i in (left,right)]
+        t,b=[i if not i%subsw else 0 for i in (top,bottom)]
+
+        last=core.std.Crop(src,left=l,right=r,top=t,bottom=b) if not(l==r==t==b==0) else src
+        y,u,v=[i(last) for i in (xvs.getY,xvs.getU,xvs.getV)]
+
+        l,r=[i if i%subsw else 0 for i in (left,right)]
+        t,b=[i if i%subsw else 0 for i in (top,bottom)]
+
+        y=core.std.Crop(y,left=l,right=r,top=t,bottom=b)
+        w=(src.width-left-right)//subsw
+        h=(src.height-top-bottom)//subsh
+        src_left=l/subsw
+        src_top=t/subsh
+        src_width=(last.width-l-r)/subsw
+        src_height=(last.height-t-b)/subsh
+        u,v=[core.resize.Bicubic(i,w,h,src_left=src_left,src_top=src_top,src_width=src_width,src_height=src_height) for i in (u,v)]
+
+        last=core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
+        return last
