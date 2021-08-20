@@ -144,7 +144,7 @@ def arop(src,left=0,right=0,top=0,bottom=0): #mostly useless experimental functi
         last=core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
         return last
 
-#padded finesharp
+#padded finesharp, because finesharp like to mess up frames' edges
 def pfinesharp(src,crop=False,**args):
     last=core.resize.Bicubic(src,src.width+8,src.height+8,src_top=-4,src_left=-4,src_width=src.width+8,src_height=src.height+8)
     last=finesharp.sharpen(last,**args)
