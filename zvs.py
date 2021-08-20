@@ -3,6 +3,7 @@ from vapoursynth import core
 import havsfunc as haf
 import xvs
 import mvsfunc as mvf
+import finesharp
 
 def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,show='output'):
     if lumaonly:
@@ -142,3 +143,11 @@ def arop(src,left=0,right=0,top=0,bottom=0): #mostly useless experimental functi
 
         last=core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
         return last
+
+#padded finesharp
+def pfinesharp(src,crop=False,**args):
+    last=core.resize.Bicubic(src,src.width+8,src.height+8,src_top=-4,src_left=-4,src_width=src.width+8,src_height=src.height+8)
+    last=finesharp.sharpen(last,**args)
+    if crop:
+        last=core.std.Crop(last,4,4,4,4)
+    return last
