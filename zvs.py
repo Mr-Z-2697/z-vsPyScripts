@@ -155,14 +155,14 @@ def pfinesharp(src,crop=False,**args):
     return last
 
 #nnrs and ssim is for chroma upscaling and downscaling only
-def w2xaa(src,model=0,noise=-1,full=None,matrix='709',nnrs=False,ssim=False,ssim_smooth=False,ssim_sigmoid=True):
+def w2xaa(src,model=0,noise=-1,format=None,full=None,matrix='709',nnrs=False,ssim=False,ssim_smooth=False,ssim_sigmoid=True):
     if full==None:
         try:
             full=src.get_frame(0).props._ColorRange
         except:
             full=False
     src_range_s='full' if full else 'limited'
-    src_format=src.format
+    src_format=src.format if format==None else format
     width,height=src.width,src.height
     if nnrs:
         last=xvs.nnrs.nnedi3_resample(src,csp=vs.RGBS,fulls=full,mats=matrix)
