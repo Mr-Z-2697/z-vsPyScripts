@@ -158,7 +158,7 @@ def pfinesharp(src,crop=False,**args):
 def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matrix='709',nnrs=False,ssim=False,ssim_smooth=False,ssim_sigmoid=True,nnrs_down=None):
     if full==None:
         try:
-            full=src.get_frame(0).props._ColorRange
+            full=not src.get_frame(0).props._ColorRange
         except:
             full=False
     src_range_s='full' if full else 'limited'
