@@ -4,6 +4,7 @@ import havsfunc as haf
 import xvs
 import mvsfunc as mvf
 import finesharp
+import muvsfunc as muf
 
 def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output'):
     if lumaonly:
@@ -151,4 +152,27 @@ def pfinesharp(src,crop=False,**args):
     last=finesharp.sharpen(last,**args)
     if crop:
         last=core.std.Crop(last,4,4,4,4)
+    return last
+
+#nnrs and ssim is for chroma upscaling and downscaling only
+def w2xaa(src,model=0,noise=-1,full=None,matrix='709',nnrs=False,ssim=False,ssim_smooth=False,ssim_sigmoid=True):
+    if full==None:
+        try:
+            full=src.get_frame(0).props._ColorRange
+        except:
+            full=False
+    src_range_s='full' if full else 'limited'
+    src_format=src.format
+    width,height=src.width,src.height
+    if nnrs:
+        last=xvs.nnrs.nnedi3_resample(src,csp=vs.RGBS,fulls=full,mats=matrix)
+    else:
+        last=core.resize.Bicubic(src,format=vs.RGBS,range_in_s=src_range_s,matrix_in_s=matrix)
+    last=core.w2xnvk.Waifu2x(last,model=model,scale=2,noise=noise)
+    if ssim:
+        last=muf.SSIM_downsample(last,width,height,format=src_format,range_s=src_range_s,matrix_s=matrix,smooth=ssim_smooth,sigmoid=ssim_sigmoid)
+    elif nnrs:
+        last=xvs.nnrs.nnedi3_resample(last,width,height,csp=src_format,fulld=full,matd=matrix)
+    else:
+        last=core.resize.Bicubic(last,width,height,format=src_format,range_s=src_range_s,matrix_s=matrix)
     return last
