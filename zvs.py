@@ -155,7 +155,7 @@ def pfinesharp(src,crop=False,**args):
     return last
 
 #nnrs and ssim is for chroma upscaling and downscaling only
-def w2xaa(src,model=0,noise=-1,format=None,full=None,matrix='709',nnrs=False,ssim=False,ssim_smooth=False,ssim_sigmoid=True):
+def w2xaa(src,model=0,noise=-1,format=None,full=None,matrix='709',nnrs=False,ssim=False,ssim_smooth=False,ssim_sigmoid=True,nnrs_down=None):
     if full==None:
         try:
             full=src.get_frame(0).props._ColorRange
@@ -164,6 +164,7 @@ def w2xaa(src,model=0,noise=-1,format=None,full=None,matrix='709',nnrs=False,ssi
     src_range_s='full' if full else 'limited'
     src_format=src.format if format==None else format
     width,height=src.width,src.height
+    nnrs_down=nnrs if nnrs_down==None else nnrs_down
     if nnrs:
         last=xvs.nnrs.nnedi3_resample(src,csp=vs.RGBS,fulls=full,mats=matrix)
     else:
@@ -171,7 +172,7 @@ def w2xaa(src,model=0,noise=-1,format=None,full=None,matrix='709',nnrs=False,ssi
     last=core.w2xnvk.Waifu2x(last,model=model,scale=2,noise=noise)
     if ssim:
         last=muf.SSIM_downsample(last,width,height,format=src_format,range_s=src_range_s,matrix_s=matrix,smooth=ssim_smooth,sigmoid=ssim_sigmoid)
-    elif nnrs:
+    elif nnrs_down:
         last=xvs.nnrs.nnedi3_resample(last,width,height,csp=src_format,fulld=full,matd=matrix)
     else:
         last=core.resize.Bicubic(last,width,height,format=src_format,range_s=src_range_s,matrix_s=matrix)
