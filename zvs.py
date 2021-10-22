@@ -84,7 +84,7 @@ def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
         mvbw3=core.mv.Analyse(sup,isb=True,delta=3,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
     
     if tr==1:
-        last=core.mv.Degrain(last,sup2,mvbw,mvfw,thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2)
+        last=core.mv.Degrain1(last,sup2,mvbw,mvfw,thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2)
     elif tr==2:
         last=core.mv.Degrain2(last,sup2,mvbw,mvfw,mvbw2,mvfw2,thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2)
     elif tr>=3:
