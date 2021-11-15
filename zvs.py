@@ -60,11 +60,13 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     return output
 
 
-def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130):
+def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None):
     if thsadc==None:
         thsadc=thsad
     last=src
-    if not chromamv:
+    if pref!=None:
+        pass
+    elif not chromamv:
         pref=core.resize.Bicubic(last,range_in_s='limited',range_s='full')
     else:
         pref=last
