@@ -6,6 +6,17 @@ import mvsfunc as mvf
 import finesharp
 import muvsfunc as muf
 
+'''
+functions:
+- pqdenoise
+- zmde
+- xdbcas
+- arop
+- pfinesharp
+- w2xaa
+- knl4a
+'''
+
 def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output'):
     if lumaonly:
         chromamv=False
@@ -180,3 +191,30 @@ def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matr
     else:
         last=core.resize.Bicubic(last,width,height,format=src_format,range_s=src_range_s,matrix_s=matrix)
     return last
+
+#a workaround for amd rdna graphic cards tp use knlmeanscl
+def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,**args):
+    y,u,v=[i(src) for i in (xvs.getY,xvs.getU,xvs.getV)]
+    y,u,v=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (y,u,v)]
+    if rclip != None:
+        ry,ru,rv=[i(rclip) for i in (xvs.getY,xvs.getU,xvs.getV)]
+        ry,ru,rv=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (ry,ru,rv)]
+    else:
+        ry=ru=rv=None
+    if isinstance(h,list):
+        if len(h)>=3:
+            pass
+        elif len(h)==2:
+            h=[h[0],h[1],h[1]]
+        else:
+            h=[h[0],h[0],h[0]]
+    else:
+        h=[h,h,h]
+    if planes[0]:
+        y=core.knlm.KNLMeansCL(y,rclip=ry,h=h[0],**args)
+    if planes[1]:
+        u=core.knlm.KNLMeansCL(u,rclip=ru,h=h[1],**args)
+    if planes[2]:
+        v=core.knlm.KNLMeansCL(v,rclip=rv,h=h[2],**args)
+    y,u,v=[core.std.ShufflePlanes(i,[0],vs.GRAY) for i in (y,u,v)]
+    return core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
