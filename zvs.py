@@ -126,6 +126,9 @@ def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=Fa
     dbmask=xvs.mwdbmask(last)
     db=core.std.MaskedMerge(db,last,dbmask)
 
+    if casstr==0:
+        return db
+
     cas=core.cas.CAS(last,casstr,planes=[0,1,2])
     cas=mvf.LimitFilter(cas,last,thr=0.3,thrc=0.15,brighten_thr=0.15,elast=4,planes=[0,1,2])
     last=core.std.Expr([cas,last,db],'x y - z +')
