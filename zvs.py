@@ -221,3 +221,14 @@ def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,**args):
         v=core.knlm.KNLMeansCL(v,rclip=rv,h=h[2],**args)
     y,u,v=[core.std.ShufflePlanes(i,[0],vs.GRAY) for i in (y,u,v)]
     return core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
+
+
+def wtfmask(src,nnrs=True,t_l=16,t_h=26):
+    last=src
+    if nnrs:
+        rgb=xvs.nnrs.nnedi3_resample(last,csp=vs.RGBS)
+    else:
+        rgb=core.resize.Bicubic(last,format=vs.RGBS,matrix_in=1)
+    last=core.tcanny.TCanny(rgb,t_l=t_l,t_h=t_h)
+    last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='full').std.Binarize(256,0,65535).std.Maximum()
+    return last
