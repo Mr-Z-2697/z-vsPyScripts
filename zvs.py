@@ -71,7 +71,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     return output
 
 
-def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None):
+def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,**args):
     if thsadc==None:
         thsadc=thsad
     last=src
@@ -97,11 +97,11 @@ def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
         mvbw3=core.mv.Analyse(sup,isb=True,delta=3,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
     
     if tr==1:
-        last=core.mv.Degrain1(last,sup2,mvbw,mvfw,thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2)
+        last=core.mv.Degrain1(last,sup2,mvbw,mvfw,thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2,**args)
     elif tr==2:
-        last=core.mv.Degrain2(last,sup2,mvbw,mvfw,mvbw2,mvfw2,thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2)
+        last=core.mv.Degrain2(last,sup2,mvbw,mvfw,mvbw2,mvfw2,thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2,**args)
     elif tr>=3:
-        last=core.mv.Degrain3(last,sup2,mvbw,mvfw,mvbw2,mvfw2,mvbw3,mvfw3,thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2)
+        last=core.mv.Degrain3(last,sup2,mvbw,mvfw,mvbw2,mvfw2,mvbw3,mvfw3,thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2,**args)
     
     return last
 
