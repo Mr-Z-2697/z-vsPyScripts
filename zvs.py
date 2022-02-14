@@ -5,6 +5,10 @@ import xvs
 import mvsfunc as mvf
 import finesharp
 import muvsfunc as muf
+from functools import partial
+import nnedi3_resample as nnrs
+nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode='znedi3',nns=3,nsize=3,qual=2)
+Nnrs=nnrs
 
 '''
 functions:
@@ -15,9 +19,11 @@ functions:
 - pfinesharp
 - w2xaa
 - knl4a
+- wtfmask
+- bordermask
 '''
 
-def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output'):
+def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output',limit=255,limitc=None,sigma2=None,radius2=None):
     if lumaonly:
         chromamv=False
         chromaclip=src
@@ -26,7 +32,8 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     src=src.fmtc.bitdepth(bits=16)
     denoised=sdr=core.resize.Bicubic(src,transfer_in=16,transfer=1,nominal_luminance=nl) if to709 else src
     if mdegrain:
-        denoised=zmde(denoised,tr=tr,thsad=thsad,thsadc=thsadc,blksize=blksize,overlap=overlap,pel=pel,thscd1=thscd1,thscd2=thscd2,chromamv=chromamv)
+        limitc=limitc if limitc else limit
+        denoised=zmde(denoised,tr=tr,thsad=thsad,thsadc=thsadc,blksize=blksize,overlap=overlap,pel=pel,thscd1=thscd1,thscd2=thscd2,chromamv=chromamv,limit=limit,limitc=limitc)
         if show=='mde':
             return denoised
 
@@ -48,9 +55,11 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
             bdenoised=core.bm3d.VAggregate(bdenoised,radius,1)
 
         if finalest:
-            bdenoised=BM3D(denoised.fmtc.bitdepth(bits=32),ref=bdenoised,sigma=sigma,radius=radius,block_step=max(block_step-1,1))
-            if not radius==0:
-                bdenoised=core.bm3d.VAggregate(bdenoised,radius,1)
+            sigma2=sigma2 if sigma2 else sigma
+            radius2=radius2 if radius2 else radius
+            bdenoised=BM3D(denoised.fmtc.bitdepth(bits=32),ref=bdenoised,sigma=sigma2,radius=radius2,block_step=max(block_step-1,1))
+            if not radius2==0:
+                bdenoised=core.bm3d.VAggregate(bdenoised,radius2,1)
 
         denoised=bdenoised.fmtc.bitdepth(bits=16)
         if show=='bm3d':
@@ -61,7 +70,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     if show=='bm3dcs':
         return denoised
 
-    if to709:    
+    if to709:
         denoised,sdr=[core.resize.Bicubic(i,transfer_in=1,transfer=16,nominal_luminance=nl) for i in (denoised,sdr)]
     
     output=core.std.Expr([src,sdr,denoised],'x y - z +') if to709 else denoised
@@ -106,7 +115,7 @@ def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
     return last
 
 
-def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=False,casstr=0.7):
+def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=True,casstr=0.7,mask=True):
     last=db=src.fmtc.bitdepth(bits=16)
     r,y,cb,cr,gy,gc=[list(i) if isinstance(i,int) else i for i in (r,y,cb,cr,gy,gc)]
     if neo:
@@ -123,8 +132,9 @@ def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=Fa
     for i in range(passes):
         db=f3k(db,r[i],y[i],cb[i],cr[i],gy[i],gc[i],output_depth=16)
     db=mvf.LimitFilter(db,last,thr=0.1,thrc=0.05,elast=20,planes=[0,1,2])
-    dbmask=xvs.mwdbmask(last)
-    db=core.std.MaskedMerge(db,last,dbmask)
+    if mask:
+        dbmask=xvs.mwdbmask(last)
+        db=core.std.MaskedMerge(db,last,dbmask)
 
     if casstr==0:
         return db
@@ -163,7 +173,7 @@ def arop(src,left=0,right=0,top=0,bottom=0): #mostly useless experimental functi
         return last
 
 #padded finesharp, because finesharp like to mess up frames' edges
-def pfinesharp(src,crop=False,**args):
+def pfinesharp(src,crop=True,**args):
     last=core.resize.Bicubic(src,src.width+8,src.height+8,src_top=-4,src_left=-4,src_width=src.width+8,src_height=src.height+8)
     last=finesharp.sharpen(last,**args)
     if crop:
@@ -183,14 +193,14 @@ def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matr
     precision=32 if fp32 else 16
     nnrs_down=nnrs if nnrs_down==None else nnrs_down
     if nnrs:
-        last=xvs.nnrs.nnedi3_resample(src,csp=vs.RGBS,fulls=full,mats=matrix)
+        last=Nnrs.nnedi3_resample(src,csp=vs.RGBS,fulls=full,mats=matrix)
     else:
         last=core.resize.Bicubic(src,format=vs.RGBS,range_in_s=src_range_s,matrix_in_s=matrix)
     last=core.w2xnvk.Waifu2x(last,model=model,scale=2,noise=noise,precision=precision,tile_size=tile_size)
     if ssim:
         last=muf.SSIM_downsample(last,width,height,format=src_format,range_s=src_range_s,matrix_s=matrix,smooth=ssim_smooth,sigmoid=ssim_sigmoid)
     elif nnrs_down:
-        last=xvs.nnrs.nnedi3_resample(last,width,height,csp=src_format,fulld=full,matd=matrix)
+        last=Nnrs.nnedi3_resample(last,width,height,csp=src_format,fulld=full,matd=matrix)
     else:
         last=core.resize.Bicubic(last,width,height,format=src_format,range_s=src_range_s,matrix_s=matrix)
     return last
@@ -223,12 +233,28 @@ def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,**args):
     return core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
 
 
-def wtfmask(src,nnrs=True,t_l=16,t_h=26):
+def wtfmask(src,nnrs=True,t_l=16,t_h=26,range='limited',op=[1],optc=1,bthr=1,**args):
     last=src
     if nnrs:
-        rgb=xvs.nnrs.nnedi3_resample(last,csp=vs.RGBS)
+        rgb=Nnrs.nnedi3_resample(last,csp=vs.RGBS)
     else:
         rgb=core.resize.Bicubic(last,format=vs.RGBS,matrix_in=1)
-    last=core.tcanny.TCanny(rgb,t_l=t_l,t_h=t_h)
-    last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='full').std.Binarize(256,0,65535).std.Maximum()
+    last=core.tcanny.TCanny(rgb,t_l=t_l,t_h=t_h,op=optc,**args)
+    if range in ['full','pc']:
+        last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='full').std.Binarize(256*bthr,0,65535)
+    else:
+        last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='limited').std.Binarize(256*(16+(235-16)/256*bthr),16*256,235*256)
+    for i in op:
+        if i==0:
+            last=last.std.Minimum()
+        elif i==1:
+            last=last.std.Maximum()
+        elif i==2:
+            last=last.std.Deflate()
+        elif i==3:
+            last=last.std.Inflate()
     return last
+
+
+def bordermask(src,l=0,r=0,t=0,b=0):
+    return core.std.BlankClip(src,format=vs.GRAY16).std.Crop(left=l,right=r,top=t,bottom=b).std.AddBorders(left=l,right=r,top=t,bottom=b,color=65535)
