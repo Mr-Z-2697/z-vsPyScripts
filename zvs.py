@@ -206,14 +206,7 @@ def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matr
     return last
 
 #a workaround for amd rdna graphic cards tp use knlmeanscl
-def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,**args):
-    y,u,v=[i(src) for i in (xvs.getY,xvs.getU,xvs.getV)]
-    y,u,v=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (y,u,v)]
-    if rclip != None:
-        ry,ru,rv=[i(rclip) for i in (xvs.getY,xvs.getU,xvs.getV)]
-        ry,ru,rv=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (ry,ru,rv)]
-    else:
-        ry=ru=rv=None
+def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,amd=True,**args):
     if isinstance(h,list):
         if len(h)>=3:
             pass
@@ -223,6 +216,19 @@ def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,**args):
             h=[h[0],h[0],h[0]]
     else:
         h=[h,h,h]
+
+    if not amd and planes==[1,1,1] and h[1]==h[2]:
+        return src.knlm.KNLMeansCL(rclip=rclip,h=h[0],channels='Y',**args).knlm.KNLMeansCL(rclip=rclip,h=h[1],channels='UV',**args)
+
+    y,u,v=[i(src) for i in (xvs.getY,xvs.getU,xvs.getV)]
+    if amd:
+        y,u,v=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (y,u,v)]
+    if isinstance(rclip,vs.VideoNode):
+        ry,ru,rv=[i(rclip) for i in (xvs.getY,xvs.getU,xvs.getV)]
+        if amd:
+            ry,ru,rv=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (ry,ru,rv)]
+    else:
+        ry=ru=rv=None
     if planes[0]:
         y=core.knlm.KNLMeansCL(y,rclip=ry,h=h[0],**args)
     if planes[1]:
@@ -234,12 +240,11 @@ def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,**args):
 
 
 def wtfmask(src,nnrs=True,t_l=16,t_h=26,range='limited',op=[1],optc=1,bthr=1,**args):
-    last=src
     if nnrs:
-        rgb=Nnrs.nnedi3_resample(last,csp=vs.RGBS)
+        last=Nnrs.nnedi3_resample(src,csp=vs.RGBS)
     else:
-        rgb=core.resize.Bicubic(last,format=vs.RGBS,matrix_in=1)
-    last=core.tcanny.TCanny(rgb,t_l=t_l,t_h=t_h,op=optc,**args)
+        last=core.resize.Bicubic(src,format=vs.RGBS,matrix_in=1)
+    last=core.tcanny.TCanny(last,t_l=t_l,t_h=t_h,op=optc,**args)
     if range in ['full','pc']:
         last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='full').std.Binarize(256*bthr,0,65535)
     else:
