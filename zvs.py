@@ -1,3 +1,4 @@
+import os,sys
 import vapoursynth as vs
 from vapoursynth import core
 import havsfunc as haf
@@ -16,7 +17,7 @@ functions:
 - zmde
 - xdbcas
 - arop
-- pfinesharp
+- pfinesharp (rpfilter (rpclip))
 - w2xaa
 - knl4a
 - wtfmask
@@ -115,7 +116,7 @@ def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
     return last
 
 
-def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=True,casstr=0.7,mask=True):
+def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=True,casstr=0.7,mask=True,limit=True):
     last=db=src.fmtc.bitdepth(bits=16)
     r,y,cb,cr,gy,gc=[list(i) if isinstance(i,int) else i for i in (r,y,cb,cr,gy,gc)]
     if neo:
@@ -131,7 +132,14 @@ def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=Tr
 
     for i in range(passes):
         db=f3k(db,r[i],y[i],cb[i],cr[i],gy[i],gc[i],output_depth=16)
-    db=mvf.LimitFilter(db,last,thr=0.1,thrc=0.05,elast=20,planes=[0,1,2])
+
+    if isinstance(limit,bool) and limit:
+        db=mvf.LimitFilter(db,last,thr=0.1,thrc=0.05,elast=20,planes=[0,1,2])
+    elif callable(limit):
+        db=limit(db,last)
+    else:
+        pass
+    
     if mask:
         dbmask=xvs.mwdbmask(last)
         db=core.std.MaskedMerge(db,last,dbmask)
@@ -173,15 +181,12 @@ def arop(src,left=0,right=0,top=0,bottom=0): #mostly useless experimental functi
         return last
 
 #padded finesharp, because finesharp like to mess up frames' edges
-def pfinesharp(src,crop=True,**args):
-    last=core.resize.Bicubic(src,src.width+8,src.height+8,src_top=-4,src_left=-4,src_width=src.width+8,src_height=src.height+8)
-    last=finesharp.sharpen(last,**args)
-    if crop:
-        last=core.std.Crop(last,4,4,4,4)
-    return last
+def pfinesharp(src,crop=True,psize=4,**args):
+    sharpen=lambda x: finesharp.sharpen(x,**args)
+    return rpfilter(src,filter=sharpen,psize=psize,crop=crop)
 
 #nnrs and ssim is for chroma upscaling and downscaling only
-def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matrix='709',nnrs=False,ssim=False,ssim_smooth=False,ssim_sigmoid=True,nnrs_down=None):
+def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matrix='709',nnrs=False,ssim=False,ssim_smooth=False,ssim_sigmoid=True,nnrs_down=None,ort=False,model_f=None,model_p=None,overlap=None):
     if full==None:
         try:
             full=not src.get_frame(0).props._ColorRange
@@ -196,7 +201,19 @@ def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matr
         last=Nnrs.nnedi3_resample(src,csp=vs.RGBS,fulls=full,mats=matrix)
     else:
         last=core.resize.Bicubic(src,format=vs.RGBS,range_in_s=src_range_s,matrix_in_s=matrix)
-    last=core.w2xnvk.Waifu2x(last,model=model,scale=2,noise=noise,precision=precision,tile_size=tile_size)
+
+    if not ort:
+        last=core.w2xnvk.Waifu2x(last,model=model,scale=2,noise=noise,precision=precision,tile_size=tile_size)
+    else:
+        tile_size=512 if tile_size==0 else tile_size
+        overlap=4 if model==2 else 8 if overlap==None else overlap
+        builtin=True if model_f==model_p==None else False
+        model_f='waifu2x' if model_f==None else model_f
+        model_g=['upconv_7_anime_style_art_rgb','upconv_7_photo','cunet'][model] if isinstance(model,int) else model
+        model_n=f'noise{noise}_scale2.0x_model.onnx' if not noise==-1 else 'scale2.0x_model.onnx'
+        model_p=os.path.join(model_f,model_g,model_n) if model_p==None else model_p
+        last=core.ort.Model(last,model_p,provider='CUDA',builtin=builtin,fp16=not fp32,tilesize=tile_size,overlap=overlap)
+
     if ssim:
         last=muf.SSIM_downsample(last,width,height,format=src_format,range_s=src_range_s,matrix_s=matrix,smooth=ssim_smooth,sigmoid=ssim_sigmoid)
     elif nnrs_down:
@@ -261,5 +278,31 @@ def wtfmask(src,nnrs=True,t_l=16,t_h=26,range='limited',op=[1],optc=1,bthr=1,**a
     return last
 
 
-def bordermask(src,l=0,r=0,t=0,b=0):
-    return core.std.BlankClip(src,format=vs.GRAY16).std.Crop(left=l,right=r,top=t,bottom=b).std.AddBorders(left=l,right=r,top=t,bottom=b,color=65535)
+def bordermask(src,l=0,r=0,t=0,b=0,d=16):
+    return core.std.BlankClip(src,format=core.std.BlankClip(format=vs.GRAY16).fmtc.bitdepth(bits=d).format,color=0).std.Crop(left=l,right=r,top=t,bottom=b).std.AddBorders(left=l,right=r,top=t,bottom=b,color=2**d-1 if d<32 else 1)
+
+#resize padded filter
+def rpfilter(input,ref=None,other=None,filter=lambda x: x,psize=2,crop=True):
+    input=rpclip(input,psize)
+    if isinstance(other,dict):
+        for key in other:
+            if isinstance(other[key],vs.VideoNode):
+                other[key]=rpclip(other[key],psize)
+    if isinstance(ref,vs.VideoNode):
+        ref=rpclip(ref,psize)
+        if isinstance(other,dict):
+            last=filter(input,ref,**other)
+        else:
+            last=filter(input,ref)
+    else:
+        if isinstance(other,dict):
+            last=filter(input,**other)
+        else:
+            last=filter(input)
+    if crop:
+        last=core.std.Crop(last,*[psize]*4)
+    return last
+
+#resize pad clip
+def rpclip(input,psize=2):
+    return core.resize.Bicubic(input,input.width+2*psize,input.height+2*psize,src_top=-psize,src_left=-psize,src_width=input.width+2*psize,src_height=input.height+2*psize)
