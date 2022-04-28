@@ -8,7 +8,7 @@ import finesharp
 import muvsfunc as muf
 from functools import partial
 import nnedi3_resample as nnrs
-nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode='znedi3',nns=3,nsize=3,qual=2)
+nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode='znedi3',nns=3,nsize=3,qual=2,pscrn=1)
 Nnrs=nnrs
 
 '''
@@ -22,6 +22,8 @@ functions:
 - knl4a
 - wtfmask
 - bordermask
+- bm3d (copy-paste!)
+- n3pv
 '''
 
 def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output',limit=255,limitc=None,sigma2=None,radius2=None):
@@ -306,3 +308,133 @@ def rpfilter(input,ref=None,other=None,filter=lambda x: x,psize=2,crop=True):
 #resize pad clip
 def rpclip(input,psize=2):
     return core.resize.Bicubic(input,input.width+2*psize,input.height+2*psize,src_top=-psize,src_left=-psize,src_width=input.width+2*psize,src_height=input.height+2*psize)
+
+#copy-paste from xyx98's zvs
+def bm3d(clip:vs.VideoNode,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,mode="cpu",radius=0,radius2=0,chroma=False,fast=True,
+            block_step1=None,bm_range1=None, ps_num1=None, ps_range1=None,
+            block_step2=None,bm_range2=None, ps_num2=None, ps_range2=None,
+            extractor_exp=0,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",
+            refine=1,dmode=0,iterates=False):
+    bits=clip.format.bits_per_sample
+    clip=core.fmtc.bitdepth(clip,bits=32)
+    if chroma is True and clip.format.id !=vs.YUV444PS:
+        raise ValueError("chroma=True only works on yuv444")
+    
+    isvbm3d=radius+radius2>0
+
+    if sigma2 is None:
+        sigma2=sigma
+
+    if preset2 is None:
+        preset2=preset
+
+    if preset not in ["fast","lc","np","high"] or preset2 not in ["fast","lc","np","high"]:
+        raise ValueError("preset and preset2 must be 'fast','lc','np',or'high'")
+
+    parmas1={
+        #block_step,bm_range, ps_num, ps_range
+        "fast":[8,9,2,4],
+        "lc"  :[6,9,2,4],
+        "np"  :[4,16,2,5],
+        "high":[3,16,2,7],
+    }
+
+    vparmas1={
+        #block_step,bm_range, ps_num, ps_range
+        "fast":[8,7,2,4],
+        "lc"  :[6,9,2,4],
+        "np"  :[4,12,2,5],
+        "high":[3,16,2,7],
+    }
+
+    parmas2={
+        #block_step,bm_range, ps_num, ps_range
+        "fast":[7,9,2,5],
+        "lc"  :[5,9,2,5],
+        "np"  :[3,16,2,6],
+        "high":[2,16,2,8],
+    }
+
+    vparmas2={
+        #block_step,bm_range, ps_num, ps_range
+        "fast":[7,7,2,5],
+        "lc"  :[5,9,2,5],
+        "np"  :[3,12,2,6],
+        "high":[2,16,2,8],
+    }
+
+
+    if isvbm3d:
+        p1,p2=vparmas1,vparmas2
+    else:
+        p1,p2=parmas1,parmas2
+
+    
+    block_step1=p1[preset][0] if block_step1 is None else block_step1
+    bm_range1=p1[preset][1] if bm_range1 is None else bm_range1
+    ps_num1=p1[preset][2] if ps_num1 is None else ps_num1
+    ps_range1=p1[preset][3] if ps_range1 is None else ps_range1
+
+    block_step2=p2[preset2][0] if block_step2 is None else block_step2
+    bm_range2=p2[preset2][1] if bm_range2 is None else bm_range2
+    ps_num2=p2[preset2][2] if ps_num2 is None else ps_num2
+    ps_range2=p2[preset2][3] if ps_range2 is None else ps_range2
+
+    if iterates:    
+        outputs=list()
+    if isvbm3d:
+        flt=bm3d_core(clip,mode=mode,sigma=sigma,radius=radius,block_step=block_step1,bm_range=bm_range1,ps_num=ps_num1,ps_range=ps_range1,chroma=chroma,fast=fast,extractor_exp=extractor_exp,device_id=device_id,bm_error_s=bm_error_s,transform_2d_s=transform_2d_s,transform_1d_s=transform_1d_s)
+        if radius>0:
+            flt=core.bm3d.VAggregate(flt,radius=radius,sample=1)
+        if iterates:
+            outputs.append(core.fmtc.bitdepth(flt,bits=bits,dmode=dmode))
+
+        for i in range(refine):
+            flt=bm3d_core(clip,ref=flt,mode=mode,sigma=sigma2,radius=radius2,block_step=block_step2,bm_range=bm_range2,ps_num=ps_num2,ps_range=ps_range2,chroma=chroma,fast=fast,extractor_exp=extractor_exp,device_id=device_id,bm_error_s=bm_error_s,transform_2d_s=transform_2d_s,transform_1d_s=transform_1d_s)
+            if radius2>0:
+                flt=core.bm3d.VAggregate(flt,radius=radius2,sample=1)
+            if iterates:
+                outputs.append(core.fmtc.bitdepth(flt,bits=bits,dmode=dmode))
+
+    else:
+        flt=bm3d_core(clip,mode=mode,sigma=sigma,radius=radius,block_step=block_step1,bm_range=bm_range1,ps_num=ps_num1,ps_range=ps_range1,chroma=chroma,fast=fast,extractor_exp=extractor_exp,device_id=device_id,bm_error_s=bm_error_s,transform_2d_s=transform_2d_s,transform_1d_s=transform_1d_s)
+        if iterates:
+            outputs.append(core.fmtc.bitdepth(flt,bits=bits,dmode=dmode))
+
+        for i in range(refine):
+            flt=bm3d_core(clip,ref=flt,mode=mode,sigma=sigma2,radius=radius2,block_step=block_step2,bm_range=bm_range2,ps_num=ps_num2,ps_range=ps_range2,chroma=chroma,fast=fast,extractor_exp=extractor_exp,device_id=device_id,bm_error_s=bm_error_s,transform_2d_s=transform_2d_s,transform_1d_s=transform_1d_s)
+            if iterates:
+                outputs.append(core.fmtc.bitdepth(flt,bits=bits,dmode=dmode))
+
+    return core.fmtc.bitdepth(flt,bits=bits,dmode=dmode) if not iterates else outputs
+
+def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=0,ps_num=2,ps_range=4,chroma=False,fast=True,extractor_exp=0,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT"):
+    if mode not in ["cpu","cuda","cuda_rtc"]:
+        raise ValueError("mode must be cpu,or cuda,or cuda_rtc")
+    elif mode=="cpu":
+        return core.bm3dcpu.BM3D(clip,ref=ref,sigma=sigma,block_step=block_step,bm_range=bm_range,radius=radius,ps_num=ps_num,ps_range=ps_range,chroma=chroma)
+    elif mode=="cuda":
+        return core.bm3dcuda.BM3D(clip,ref=ref,sigma=sigma,block_step=block_step,bm_range=bm_range,radius=radius,ps_num=ps_num,ps_range=ps_range,chroma=chroma,fast=fast,extractor_exp=extractor_exp,device_id=device_id)
+    else:
+        return core.bm3dcuda_rtc.BM3D(clip,ref=ref,sigma=sigma,block_step=block_step,bm_range=bm_range,radius=radius,ps_num=ps_num,ps_range=ps_range,chroma=chroma,fast=fast,extractor_exp=extractor_exp,device_id=device_id,bm_error_s=bm_error_s,transform_2d_s=transform_2d_s,transform_1d_s=transform_1d_s)
+
+#nnedi3 preview
+def n3pv(*args,**kwargs):
+    scale=kwargs.get('scale') if kwargs.get('scale')!=None else 2
+    nns=kwargs.get('nns') if kwargs.get('nns')!=None else 1
+    nsize=kwargs.get('nsize') if kwargs.get('nsize')!=None else 0
+    qual=kwargs.get('qual') if kwargs.get('qual')!=None else 1
+    mode=kwargs.get('mode') if kwargs.get('mode')!=None else 'nnedi3cl'
+    last=list()
+    if len(args)==1:
+        if isinstance(args[0],list):
+            for clip in args[0]:
+                last.append(Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode))
+        elif isinstance(args[0],vs.VideoNode):
+            last.append(Nnrs.nnedi3_resample(args[0],args[0].width*scale,args[0].height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode))
+        else:
+            raise TypeError('input for preview should be list or clip')
+    else:
+        for i in range(len(args)):
+            last.append(Nnrs.nnedi3_resample(args[i],args[i].width*scale,args[i].height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode).sub.Subtitle('clip%d'%i))
+    return core.std.Interleave(last)
