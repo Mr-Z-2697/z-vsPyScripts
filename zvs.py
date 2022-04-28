@@ -268,15 +268,9 @@ def wtfmask(src,nnrs=True,t_l=16,t_h=26,range='limited',op=[1],optc=1,bthr=1,**a
         last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='full').std.Binarize(256*bthr,0,65535)
     else:
         last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='limited').std.Binarize(256*(16+(235-16)/256*bthr),16*256,235*256)
+    f=[core.std.Minimum,core.std.Maximum,core.std.Deflate,core.std.Inflate]
     for i in op:
-        if i==0:
-            last=last.std.Minimum()
-        elif i==1:
-            last=last.std.Maximum()
-        elif i==2:
-            last=last.std.Deflate()
-        elif i==3:
-            last=last.std.Inflate()
+        last=f[i](last)
     return last
 
 
