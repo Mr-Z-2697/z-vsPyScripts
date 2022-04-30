@@ -7,6 +7,7 @@ import mvsfunc as mvf
 import finesharp
 import muvsfunc as muf
 from functools import partial
+from typing import Optional
 import nnedi3_resample as nnrs
 nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode='znedi3',nns=3,nsize=3,qual=2,pscrn=1)
 Nnrs=nnrs
@@ -24,6 +25,7 @@ functions:
 - bordermask
 - bm3d (copy-paste!)
 - n3pv
+- rescale, rescalef, multirescale (copy-paste!)
 '''
 
 def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output',limit=255,limitc=None,sigma2=None,radius2=None):
@@ -303,7 +305,32 @@ def rpfilter(input,ref=None,other=None,filter=lambda x: x,psize=2,crop=True):
 def rpclip(input,psize=2):
     return core.resize.Bicubic(input,input.width+2*psize,input.height+2*psize,src_top=-psize,src_left=-psize,src_width=input.width+2*psize,src_height=input.height+2*psize)
 
-#copy-paste from xyx98's zvs
+#nnedi3 preview
+def n3pv(*args,**kwargs):
+    scale=kwargs.get('scale') if kwargs.get('scale')!=None else 2
+    nns=kwargs.get('nns') if kwargs.get('nns')!=None else 1
+    nsize=kwargs.get('nsize') if kwargs.get('nsize')!=None else 0
+    qual=kwargs.get('qual') if kwargs.get('qual')!=None else 1
+    mode=kwargs.get('mode') if kwargs.get('mode')!=None else 'nnedi3cl'
+    last=list()
+    if len(args)==1:
+        if isinstance(args[0],list):
+            for clip in args[0]:
+                last.append(Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode))
+        elif isinstance(args[0],vs.VideoNode):
+            last.append(Nnrs.nnedi3_resample(args[0],args[0].width*scale,args[0].height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode))
+        else:
+            raise TypeError('input for preview should be list or clip')
+    else:
+        for i in range(len(args)):
+            last.append(Nnrs.nnedi3_resample(args[i],args[i].width*scale,args[i].height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode).sub.Subtitle('clip%d'%i))
+    return core.std.Interleave(last)
+
+########################################################
+########## HERE STARTS THE COPY-PASTE SECTION ##########
+########################################################
+
+#copy-paste from xyx98's xvs with some modification
 def bm3d(clip:vs.VideoNode,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,mode="cpu",radius=0,radius2=0,chroma=False,fast=True,
             block_step1=None,bm_range1=None, ps_num1=None, ps_range1=None,
             block_step2=None,bm_range2=None, ps_num2=None, ps_range2=None,
@@ -402,6 +429,7 @@ def bm3d(clip:vs.VideoNode,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,
 
     return core.fmtc.bitdepth(flt,bits=bits,dmode=dmode) if not iterates else outputs
 
+#copy-paste from xyx98's xvs
 def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=0,ps_num=2,ps_range=4,chroma=False,fast=True,extractor_exp=0,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT"):
     if mode not in ["cpu","cuda","cuda_rtc"]:
         raise ValueError("mode must be cpu,or cuda,or cuda_rtc")
@@ -412,23 +440,306 @@ def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=
     else:
         return core.bm3dcuda_rtc.BM3D(clip,ref=ref,sigma=sigma,block_step=block_step,bm_range=bm_range,radius=radius,ps_num=ps_num,ps_range=ps_range,chroma=chroma,fast=fast,extractor_exp=extractor_exp,device_id=device_id,bm_error_s=bm_error_s,transform_2d_s=transform_2d_s,transform_1d_s=transform_1d_s)
 
-#nnedi3 preview
-def n3pv(*args,**kwargs):
-    scale=kwargs.get('scale') if kwargs.get('scale')!=None else 2
-    nns=kwargs.get('nns') if kwargs.get('nns')!=None else 1
-    nsize=kwargs.get('nsize') if kwargs.get('nsize')!=None else 0
-    qual=kwargs.get('qual') if kwargs.get('qual')!=None else 1
-    mode=kwargs.get('mode') if kwargs.get('mode')!=None else 'nnedi3cl'
-    last=list()
-    if len(args)==1:
-        if isinstance(args[0],list):
-            for clip in args[0]:
-                last.append(Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode))
-        elif isinstance(args[0],vs.VideoNode):
-            last.append(Nnrs.nnedi3_resample(args[0],args[0].width*scale,args[0].height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode))
-        else:
-            raise TypeError('input for preview should be list or clip')
+#copy-paste from xyx98's xvs with some modification
+def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,**args):
+    if src.format.color_family not in [vs.YUV,vs.GRAY]:
+        raise ValueError("input clip should be YUV or GRAY!")
+
+    src_h,src_w=src.height,src.width
+    if w is None and h is None:
+        w,h=1280,720
+    elif w is None:
+        w=int(h*src_w/src_h)
     else:
-        for i in range(len(args)):
-            last.append(Nnrs.nnedi3_resample(args[i],args[i].width*scale,args[i].height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode).sub.Subtitle('clip%d'%i))
-    return core.std.Interleave(last)
+        h=int(w*src_h/src_w)
+
+    if w>=src_w or h>=src_h:
+        raise ValueError("w,h should less than input resolution")
+    
+    kernel=kernel.strip().capitalize()
+    if kernel not in ["Debilinear","Debicubic","Delanczos","Despline16","Despline36","Despline64"]:
+        raise ValueError("unsupport kernel")
+    
+    src=core.fmtc.bitdepth(src,bits=16)
+    luma=xvs.getY(src)
+    if isinstance(mask_gen_clip,vs.VideoNode):
+        luma=core.std.Interleave([luma,xvs.getY(mask_gen_clip)])
+    ####
+    if kernel in ["Debilinear","Despline16","Despline36","Despline64"]:
+        luma_de=eval("core.descale.{k}(luma.fmtc.bitdepth(bits=32),w,h)".format(k=kernel))
+        luma_up=eval("core.resize.{k}(luma_de,src_w,src_h)".format(k=kernel[2:].capitalize())).fmtc.bitdepth(bits=16,dmode=1)
+    elif kernel=="Debicubic":
+        luma_de=core.descale.Debicubic(luma.fmtc.bitdepth(bits=32),w,h,b=args.get("b"),c=args.get("c"))
+        luma_up=core.resize.Bicubic(luma_de,src_w,src_h,filter_param_a=args.get("b"),filter_param_b=args.get("c")).fmtc.bitdepth(bits=16,dmode=1)
+    else:
+        luma_de=core.descale.Delanczos(luma.fmtc.bitdepth(bits=32),w,h,taps=args.get("taps"))
+        luma_up=core.resize.Lanczos(luma_de,src_w,src_h,filter_param_a=args.get("taps")).fmtc.bitdepth(bits=16,dmode=1)
+    
+    if isinstance(mask_gen_clip,vs.VideoNode):
+        mclip=xvs.getY(mask_gen_clip)
+        mclip_up=luma_up[1::2]
+        luma=luma[::2]
+        luma_de=luma_de[::2]
+        luma_up=luma_up[::2]
+
+    if postfilter_descaled is None:
+        pass
+    elif callable(postfilter_descaled):
+        luma_de=postfilter_descaled(luma_de)
+    else:
+        raise ValueError("postfilter_descaled must be a function")
+
+    nsize=3 if args.get("nsize") is None else args.get("nsize")#keep behavior before
+    nns=args.get("nns")
+    qual=2 if args.get("qual") is None else args.get("qual")#keep behavior before
+    etype=args.get("etype")
+    pscrn=args.get("pscrn")
+    exp=args.get("exp")
+
+    luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp).fmtc.bitdepth(bits=16)
+
+    if mask:
+        if not isinstance(mask_gen_clip,vs.VideoNode):
+            mclip,mclip_up=luma,luma_up
+        mask=core.std.Expr([mclip,mclip_up],"x y - abs").std.Binarize(mask_dif_pix*256)
+        if callable(mask_operate_func):
+            mask=mask_operate_func(mask)
+        else:
+            mask=xvs.expand(mask,cycle=mthr[0])
+            mask=xvs.inpand(mask,cycle=mthr[1])
+
+        luma_rescale=core.std.MaskedMerge(luma_rescale,luma,mask)
+    
+    if show=="descale":
+        return luma_de
+    elif show=="mask":
+        return mask
+    elif show=="both":
+        return luma_de,mask
+
+    if src.format.color_family==vs.GRAY:
+        return luma_rescale
+    else:
+        return core.std.ShufflePlanes([luma_rescale,src],[0,1,2],vs.YUV)
+
+#copy-paste from xyx98's xvs with some modification
+def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,selective=False,upper=0.0001,lower=0.00001,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,**args):
+    #for decimal resolution descale,refer to GetFnative
+    if src.format.color_family not in [vs.YUV,vs.GRAY]:
+        raise ValueError("input clip should be YUV or GRAY!")
+
+    src_h,src_w=src.height,src.width
+    if w is None and h is None:
+        w,h=1280,720
+    elif w is None:
+        w=int(h*src_w/src_h)
+    else:
+        h=int(w*src_h/src_w)
+
+    if bh is None:
+        bh=1080
+
+    if w>=src_w or h>=src_h:
+        raise ValueError("w,h should less than input resolution")
+    
+    kernel=kernel.strip().capitalize()
+    if kernel not in ["Debilinear","Debicubic","Delanczos","Despline16","Despline36","Despline64"]:
+        raise ValueError("unsupport kernel")
+
+    src=core.fmtc.bitdepth(src,bits=16)
+    luma=xvs.getY(src)
+    if isinstance(mask_gen_clip,vs.VideoNode):
+        luma=core.std.Interleave([luma,xvs.getY(mask_gen_clip)])
+    cargs=xvs.cropping_args(src.width,src.height,h,bh,bw)
+    ####
+    if kernel in ["Debilinear","Despline16","Despline36","Despline64"]:
+        luma_de=eval("core.descale.{k}(luma.fmtc.bitdepth(bits=32),**cargs.descale_gen())".format(k=kernel))
+        luma_up=eval("core.resize.{k}(luma_de,**cargs.resize_gen())".format(k=kernel[2:].capitalize()))
+    elif kernel=="Debicubic":
+        luma_de=core.descale.Debicubic(luma.fmtc.bitdepth(bits=32),b=args.get("b"),c=args.get("c"),**cargs.descale_gen())
+        luma_up=core.resize.Bicubic(luma_de,filter_param_a=args.get("b"),filter_param_b=args.get("c"),**cargs.resize_gen())
+    else:
+        luma_de=core.descale.Delanczos(luma.fmtc.bitdepth(bits=32),taps=args.get("taps"),**cargs.descale_gen())
+        luma_up=core.resize.Lanczos(luma_de,filter_param_a=args.get("taps"),**cargs.resize_gen())#
+
+    if isinstance(mask_gen_clip,vs.VideoNode):
+        mclip=xvs.getY(mask_gen_clip)
+        mclip_up=luma_up[1::2]
+        luma=luma[::2]
+        luma_de=luma_de[::2]
+        luma_up=luma_up[::2]
+
+    diff = core.std.Expr([luma.fmtc.bitdepth(bits=32), luma_up], f'x y - abs dup 0.015 > swap 0 ?').std.Crop(10, 10, 10, 10).std.PlaneStats()
+
+    if postfilter_descaled is None:
+        pass
+    elif callable(postfilter_descaled):
+        luma_de=postfilter_descaled(luma_de)
+    else:
+        raise ValueError("postfilter_descaled must be a function")
+
+    nsize=3 if args.get("nsize") is None else args.get("nsize")#keep behavior before
+    nns=args.get("nns")
+    qual=2 if args.get("qual") is None else args.get("qual")#keep behavior before
+    etype=args.get("etype")
+    pscrn=args.get("pscrn")
+    exp=args.get("exp")
+
+    luma_rescale=nnrs.nnedi3_resample(luma_de,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
+
+    def calc(n,f): 
+        fout=f[1].copy()
+        fout.props["diff"]=f[0].props["PlaneStatsAverage"]
+        return fout
+
+    luma_rescale=core.std.ModifyFrame(luma_rescale,[diff,luma_rescale],calc)
+
+    if mask:
+        if not isinstance(mask_gen_clip,vs.VideoNode):
+            mclip,mclip_up=luma,luma_up
+        mask=core.std.Expr([mclip,mclip_up.fmtc.bitdepth(bits=16,dmode=1)],"x y - abs").std.Binarize(mask_dif_pix*256)
+        if callable(mask_operate_func):
+            mask=mask_operate_func(mask)
+        else:
+            mask=xvs.expand(mask,cycle=mthr[0])
+            mask=xvs.inpand(mask,cycle=mthr[1])
+
+        luma_rescale=core.std.MaskedMerge(luma_rescale,luma,mask)
+    
+    if selective:
+        base=upper-lower
+        #x:rescale y:src
+        expr=f"x.diff {upper} > y x.diff {lower} < x {upper} x.diff -  {base} / y * x.diff {lower} - {base} / x * + ? ?"
+        luma_rescale=core.akarin.Expr([luma_rescale,luma], expr)
+
+    if show=="descale":
+        return luma_de
+    elif show=="mask":
+        return mask
+    elif show=="both":
+        return luma_de,mask
+    elif show=="diff":
+        return core.text.FrameProps(luma_rescale,"diff", scale=2)
+
+    if src.format.color_family==vs.GRAY:
+        return luma_rescale
+    else:
+        return core.std.ShufflePlanes([luma_rescale,src],[0,1,2],vs.YUV)
+
+#copy-paste from xyx98's xvs with some modification
+def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Optional[int]=None,mask:bool=True,mask_dif_pix:float=2.5,postfilter_descaled=None,selective_disable:bool=False,disable_thr:float=0.00001,showinfo=False,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,**args):
+    clip=core.fmtc.bitdepth(clip,bits=16)
+    luma=xvs.getY(clip)
+    src_h,src_w=clip.height,clip.width
+    def getwh(w,h):
+        if w is None and h is None:
+            w,h=1280,720
+        elif w is None:
+            w=int(h*src_w/src_h)
+        elif h is None:
+            h=int(w*src_h/src_w)
+
+        if w>=src_w or h>=src_h:
+            raise ValueError("w,h should less than input resolution")
+        return w,h
+
+    w,h=getwh(w,h)
+
+    info_gobal=f"gobal:\nresolution:{w}x{h}\tmask:{mask}\tmask_dif_pix:{mask_dif_pix}\tpostfilter_descaled:{'yes' if postfilter_descaled else 'no'}\nselective_disable:{selective_disable}\tdisable_thr:{disable_thr:f}\nextra:{str(args)}"
+    rescales=[]
+    total=len(kernels)
+    for i in kernels:
+        k=i["k"][2:]
+        kb,kc,ktaps=i.get("b"),i.get("c"),i.get("taps")
+        kw,kh=i.get("w"),i.get("h")
+        if kw is not None or kh is not None:
+            kw,kh=getwh(kw,kh)
+        else:
+            kw,kh=w,h
+        kmask=mask if i.get("mask") is None else i.get("mask")
+        kmdp=mask_dif_pix if i.get("mask_dif_pix") is None else i.get("mask_dif_pix")
+        kpp=postfilter_descaled if i.get("postfilter_descaled") is None else i.get("postfilter_descaled")
+        multiple=1 if i.get("multiple") is None else i.get("multiple")
+        mthr=mthr if i.get("mthr") is None else i.get("mthr")
+        mgc=mask_gen_clip if i.get("mask_gen_clip") is None else i.get("mask_gen_clip")
+        mof=mask_operate_func if i.get("mask_operate_func") is None else i.get("mask_operate_func")
+
+        rescales.append(MRcore(luma,kernel=k,w=kw,h=kh,mask=kmask,mask_dif_pix=kmdp,postfilter_descaled=kpp,taps=ktaps,b=kb,c=kc,multiple=multiple,mthr=mthr,mask_gen_clip=mgc,mask_operate_func=mof,**args))
+
+
+    def selector(n,f,src,clips):
+        kernels_info=[]
+        index,mindiff=0,f[0].props["diff"]
+        for i in range(total):
+            tmpdiff=f[i].props["diff"]
+            kernels_info.append(f"kernel {i}:\t{kernels[i]}\n{tmpdiff:.10f}")
+            if tmpdiff<mindiff:
+                index,tmpdiff=i,tmpdiff
+
+        info=info_gobal+"\n--------------------\n"+("\n--------------------\n").join(kernels_info)+"\n--------------------\ncurrent usage:\n"
+        if selective_disable and mindiff>disable_thr:
+            last=src
+            info+="source"
+        else:
+            last=clips[index]
+            info+=kernels_info[index]
+        if showinfo:
+            last=core.text.Text(last,info.replace("\t","    "))
+        return last
+
+    last=core.std.FrameEval(luma,partial(selector,src=luma,clips=rescales),prop_src=rescales)
+    if clip.format.color_family==vs.GRAY:
+        return last
+    else:
+        return core.std.ShufflePlanes([last,clip],[0,1,2],vs.YUV)
+
+#copy-paste from xyx98's xvs with some modification
+def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix:float=2,postfilter_descaled=None,taps:int=3,b:float=0,c:float=0.5,multiple:float=1,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,**args):
+    src_w,src_h=clip.width,clip.height
+    clip32=core.fmtc.bitdepth(clip,bits=32)
+    if isinstance(mask_gen_clip,vs.VideoNode):
+        clip32=core.std.Interleave([clip32,xvs.getY(mask_gen_clip).fmtc.bitdepth(bits=32)])
+    descaled=core.descale.Descale(clip32,width=w,height=h,kernel=kernel.lower(),taps=taps,b=b,c=c)
+    upscaled=xvs.resize_core(kernel.capitalize(),taps,b,c)(descaled,src_w,src_h)
+    if isinstance(mask_gen_clip,vs.VideoNode):
+        mclip=xvs.getY(mask_gen_clip)
+        mclip_up=upscaled[1::2]
+        clip32=clip32[::2]
+        descaled=descaled[::2]
+        upscaled=upscaled[::2]
+    diff=core.std.Expr([clip32,upscaled],"x y - abs dup 0.015 > swap 0 ?").std.PlaneStats()
+    
+    def calc(n,f): 
+        fout=f[1].copy()
+        fout.props["diff"]=f[0].props["PlaneStatsAverage"]*multiple
+        return fout
+
+    if postfilter_descaled is None:
+        pass
+    elif callable(postfilter_descaled):
+        descaled=postfilter_descaled(descaled)
+    else:
+        raise ValueError("postfilter_descaled must be a function")
+
+    nsize=3 if args.get("nsize") is None else args.get("nsize")
+    nns=args.get("nns")
+    qual=2 if args.get("qual") is None else args.get("qual")
+    etype=args.get("etype")
+    pscrn=args.get("pscrn")
+    exp=args.get("exp")
+
+    rescale=nnrs.nnedi3_resample(descaled,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp).fmtc.bitdepth(bits=16)
+
+    if mask:
+        if not isinstance(mask_gen_clip,vs.VideoNode):
+            mclip=clip
+            mclip_up=upscaled
+        mask=core.std.Expr([mclip,mclip_up.fmtc.bitdepth(bits=16,dmode=1)],"x y - abs").std.Binarize(mask_dif_pix*256)
+        if callable(mask_operate_func):
+            mask=mask_operate_func(mask)
+        else:
+            mask=xvs.expand(mask,cycle=mthr[0])
+            mask=xvs.inpand(mask,cycle=mthr[1])
+        rescale=core.std.MaskedMerge(rescale,clip,mask)
+
+    return core.std.ModifyFrame(rescale,[diff,rescale],calc)
