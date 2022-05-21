@@ -331,7 +331,7 @@ def n3pv(*args,**kwargs):
 ########################################################
 
 #copy-paste from xyx98's xvs with some modification
-def bm3d(clip:vs.VideoNode,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,mode="cpu",radius=0,radius2=0,chroma=False,fast=True,
+def bm3d(clip:vs.VideoNode,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,mode="cpu",radius=0,radius2=None,chroma=False,fast=True,
             block_step1=None,bm_range1=None, ps_num1=None, ps_range1=None,
             block_step2=None,bm_range2=None, ps_num2=None, ps_range2=None,
             extractor_exp=0,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",
@@ -341,6 +341,8 @@ def bm3d(clip:vs.VideoNode,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,
     if chroma is True and clip.format.id !=vs.YUV444PS:
         raise ValueError("chroma=True only works on yuv444")
     
+    if radius2 is None:
+        radius2=radius
     isvbm3d=radius+radius2>0
 
     if sigma2 is None:
