@@ -342,6 +342,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
             refine=1,dmode=0,iterates=False):
     bits=clip.format.bits_per_sample
     clip=core.fmtc.bitdepth(clip,bits=32)
+    iref=core.fmtc.bitdepth(iref,bits=32)
     if chroma is True and clip.format.id !=vs.YUV444PS:
         raise ValueError("chroma=True only works on yuv444")
     
