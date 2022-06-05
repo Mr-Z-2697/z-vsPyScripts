@@ -9,7 +9,7 @@ import muvsfunc as muf
 from functools import partial
 from typing import Optional
 import nnedi3_resample as nnrs
-nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode='znedi3',nns=3,nsize=3,qual=2,pscrn=1)
+nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode='nnedi3cl',nns=3,nsize=3,qual=2,pscrn=1)
 Nnrs=nnrs
 
 '''
@@ -342,7 +342,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
             refine=1,dmode=0,iterates=False):
     bits=clip.format.bits_per_sample
     clip=core.fmtc.bitdepth(clip,bits=32)
-    iref=core.fmtc.bitdepth(iref,bits=32)
+    iref=core.fmtc.bitdepth(iref,bits=32) if isinstance(iref,vs.VideoNode) else None
     if chroma is True and clip.format.id !=vs.YUV444PS:
         raise ValueError("chroma=True only works on yuv444")
     
@@ -503,10 +503,11 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     nns=args.get("nns")
     qual=2 if args.get("qual") is None else args.get("qual")#keep behavior before
     etype=args.get("etype")
-    pscrn=args.get("pscrn")
+    pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
+    mode="nnedi3cl" if args.get("mode") is None else args.get("mode")
 
-    luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp).fmtc.bitdepth(bits=16)
+    luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
 
     if mask:
         if not isinstance(mask_gen_clip,vs.VideoNode):
@@ -592,7 +593,7 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     nns=args.get("nns")
     qual=2 if args.get("qual") is None else args.get("qual")#keep behavior before
     etype=args.get("etype")
-    pscrn=args.get("pscrn")
+    pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
 
     luma_rescale=nnrs.nnedi3_resample(luma_de,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
@@ -735,7 +736,7 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix
     nns=args.get("nns")
     qual=2 if args.get("qual") is None else args.get("qual")
     etype=args.get("etype")
-    pscrn=args.get("pscrn")
+    pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
 
     rescale=nnrs.nnedi3_resample(descaled,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp).fmtc.bitdepth(bits=16)
