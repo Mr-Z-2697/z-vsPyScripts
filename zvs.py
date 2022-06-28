@@ -334,22 +334,26 @@ def n3pv(*args,**kwargs):
 
 #quack quack, I'll take your grains
 #a dumb-ass func may be suitable for old movies with heavy dynamic grains
-def quack(src,\
-    knl={'amd':False,'a':1,'s':2,'d':3,'h':2},\
-    md1={'thsad':250,'thscd1':250,'limit':768,'tr':3},\
-    bm1={'sigma':[2,2,2],'radius':1},\
-    md2={'thsad':250,'thscd1':250,'limit':768,'tr':3},\
-    bm2={'sigma':[1,1,1],'radius':1}\
-    ):
+def quack(src,knl={},md1={},bm1={},md2={},bm2={}):
+    _knl={'amd':False,'a':1,'s':2,'d':3,'h':2}
+    _md1={'thsad':250,'thscd1':250,'limit':768,'tr':3}
+    _bm1={'sigma':[2,2,2],'radius':1}
+    _md2={'thsad':250,'thscd1':250,'limit':768,'tr':3}
+    _bm2={'sigma':[1,1,1],'radius':1}
+    _knl.update(knl)
+    _md1.update(md1)
+    _bm1.update(bm1)
+    _md2.update(md2)
+    _bm2.update(bm2)
     if src.format.bits_per_sample!=16:
         src=src.fmtc.bitdepth(bits=16)
     last=src
     m=last.std.Median()
-    n=knl4a(last,rclip=m,**knl)
-    last=zmde(last,pref=n,**md1)
-    last=bm3d(last,iref=src,**bm1)
-    last=zmde(src,pref=last,**md2)
-    last=bm3d(last,iref=src,**bm2)
+    n=knl4a(last,rclip=m,**_knl)
+    last=zmde(last,pref=n,**_md1)
+    last=bm3d(last,iref=src,**_bm1)
+    last=zmde(src,pref=last,**_md2)
+    last=bm3d(last,iref=src,**_bm2)
     return last
 
 
