@@ -26,6 +26,7 @@ functions:
 - bm3d (copy-paste!)
 - n3pv
 - rescale, rescalef, multirescale (copy-paste!)
+- quack
 '''
 
 def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output',limit=255,limitc=None,sigma2=None,radius2=None):
@@ -226,7 +227,7 @@ def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matr
         last=core.resize.Bicubic(last,width,height,format=src_format,range_s=src_range_s,matrix_s=matrix)
     return last
 
-#a workaround for amd rdna graphic cards tp use knlmeanscl
+#a workaround for amd rdna graphic cards to use knlmeanscl
 def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,amd=True,**args):
     if isinstance(h,list):
         if len(h)>=3:
@@ -252,10 +253,15 @@ def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,amd=True,**args):
         ry=ru=rv=None
     if planes[0]:
         y=core.knlm.KNLMeansCL(y,rclip=ry,h=h[0],**args)
-    if planes[1]:
-        u=core.knlm.KNLMeansCL(u,rclip=ru,h=h[1],**args)
-    if planes[2]:
-        v=core.knlm.KNLMeansCL(v,rclip=rv,h=h[2],**args)
+    if planes[1] and planes[2] and h[1]==h[2]:
+        uv=core.knlm.KNLMeansCL(src,rclip=rclip,h=h[1],channels='UV',**args)
+        u=xvs.getU(uv)
+        v=xvs.getV(uv)
+    else:
+        if planes[1]:
+            u=core.knlm.KNLMeansCL(u,rclip=ru,h=h[1],**args)
+        if planes[2]:
+            v=core.knlm.KNLMeansCL(v,rclip=rv,h=h[2],**args)
     y,u,v=[core.std.ShufflePlanes(i,[0],vs.GRAY) for i in (y,u,v)]
     return core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
 
@@ -325,6 +331,27 @@ def n3pv(*args,**kwargs):
         for i in range(len(args)):
             last.append(Nnrs.nnedi3_resample(args[i],args[i].width*scale,args[i].height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode).sub.Subtitle('clip%d'%i))
     return core.std.Interleave(last)
+
+#quack quack, I'll take your grains
+#a dumb-ass func may be suitable for old movies with heavy dynamic grains
+def quack(src,\
+    knl={'amd':False,'a':1,'s':2,'d':3,'h':2},\
+    md1={'thsad':250,'thscd1':250,'limit':768,'tr':3},\
+    bm1={'sigma':[2,2,2],'radius':1},\
+    md2={'thsad':250,'thscd1':250,'limit':768,'tr':3},\
+    bm2={'sigma':[1,1,1],'radius':1}\
+    ):
+    if src.format.bits_per_sample!=16:
+        src=src.fmtc.bitdepth(bits=16)
+    last=src
+    m=last.std.Median()
+    n=knl4a(last,rclip=m,**knl)
+    last=zmde(last,pref=n,**md1)
+    last=bm3d(last,iref=src,**bm1)
+    last=zmde(src,pref=last,**md2)
+    last=bm3d(last,iref=src,**bm2)
+    return last
+
 
 ########################################################
 ########## HERE STARTS THE COPY-PASTE SECTION ##########
