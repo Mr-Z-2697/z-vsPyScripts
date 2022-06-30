@@ -9,7 +9,7 @@ import muvsfunc as muf
 from functools import partial
 from typing import Optional
 import nnedi3_resample as nnrs
-nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode='nnedi3cl',nns=3,nsize=3,qual=2,pscrn=1)
+nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode='nnedi3',nns=3,nsize=3,qual=2,pscrn=1)
 Nnrs=nnrs
 
 '''
@@ -317,7 +317,7 @@ def n3pv(*args,**kwargs):
     nns=kwargs.get('nns') if kwargs.get('nns')!=None else 1
     nsize=kwargs.get('nsize') if kwargs.get('nsize')!=None else 0
     qual=kwargs.get('qual') if kwargs.get('qual')!=None else 1
-    mode=kwargs.get('mode') if kwargs.get('mode')!=None else 'nnedi3cl'
+    mode=kwargs.get('mode') if kwargs.get('mode')!=None else 'nnedi3'
     last=list()
     if len(args)==1:
         if isinstance(args[0],list):
