@@ -536,7 +536,7 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     etype=args.get("etype")
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
-    mode="nnedi3cl" if args.get("mode") is None else args.get("mode")
+    mode="nnedi3" if args.get("mode") is None else args.get("mode")
 
     luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
 
