@@ -9,7 +9,14 @@ import muvsfunc as muf
 from functools import partial
 from typing import Optional
 import nnedi3_resample as nnrs
-nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode='nnedi3',nns=3,nsize=3,qual=2,pscrn=1)
+
+try:
+    from zvs_defaults import *
+except:
+    nnrs_mode_default='nnedi3'
+    bm3d_mode_default='cpu'
+
+nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode=nnrs_mode_default,nns=3,nsize=3,qual=2,pscrn=1)
 Nnrs=nnrs
 
 '''
@@ -317,7 +324,7 @@ def n3pv(*args,**kwargs):
     nns=kwargs.get('nns') if kwargs.get('nns')!=None else 1
     nsize=kwargs.get('nsize') if kwargs.get('nsize')!=None else 0
     qual=kwargs.get('qual') if kwargs.get('qual')!=None else 1
-    mode=kwargs.get('mode') if kwargs.get('mode')!=None else 'nnedi3'
+    mode=kwargs.get('mode') if kwargs.get('mode')!=None else nnrs_mode_default
     last=list()
     if len(args)==1:
         if isinstance(args[0],list):
@@ -366,7 +373,7 @@ def quack(src,knl={},md1={},bm1={},md2={},bm2={}):
 #radius2: similar to "sigma2"
 #iterates: outputs all bm3d passes as a list in the order they take place
 #iref: initial ref
-def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,mode="cpu",radius=0,radius2=None,chroma=False,fast=True,
+def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,mode=bm3d_mode_default,radius=0,radius2=None,chroma=False,fast=True,
             block_step1=None,bm_range1=None, ps_num1=None, ps_range1=None,
             block_step2=None,bm_range2=None, ps_num2=None, ps_range2=None,
             extractor_exp=0,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",
@@ -536,7 +543,7 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     etype=args.get("etype")
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
-    mode="nnedi3" if args.get("mode") is None else args.get("mode")
+    mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
 
     luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
 
