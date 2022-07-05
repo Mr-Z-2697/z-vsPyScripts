@@ -34,6 +34,7 @@ functions:
 - n3pv
 - rescale, rescalef, multirescale (copy-paste!)
 - quack
+- bilateraluv
 '''
 
 def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output',limit=255,limitc=None,sigma2=None,radius2=None):
@@ -363,6 +364,32 @@ def quack(src,knl={},md1={},bm1={},md2={},bm2={}):
     last=bm3d(last,iref=src,**_bm2)
     return last
 
+#use y channel as reference to repair uv channels with bilateral
+def bilateraluv(src,ch='uv',mode='down',method='bicubic',S=1,R=0.02,**args):
+    if mode.lower()=='up':
+        targetw=src.width
+        targeth=src.height
+    elif mode.lower()=='down':
+        targetw=src.width / (2**src.format.subsampling_w)
+        targeth=src.height / (2**src.format.subsampling_h)
+    else:
+        raise ValueError('mode not supported')
+
+    if method.lower()=='nnrs':
+        last=Nnrs.nnedi3_resample(src,targetw,targeth,csp=vs.YUV444P16)
+    elif method.lower() in ['point','bilinear','bicubic','lanczos','spline16','spline36','spline64']:
+        resizers={'point':core.resize.Point,'bilinear':core.resize.Bilinear,'bicubic':core.resize.Bicubic,'lanczos':core.resize.Lanczos,'spline16':core.resize.Spline16,'spline36':core.resize.Spline36,'spline64':core.resize.Spline64}
+        resizer=resizers[method.lower()]
+        last=resizer(src,targetw,targeth,format=vs.YUV444P16,**args)
+    else:
+        raise ValueError('resize mathod not supported')
+
+    y,u,v=[i(last) for i in (xvs.getY,xvs.getU,xvs.getV)]
+    if 'u' in ch.lower():
+        u=core.bilateral.Bilateral(u,y,sigmaS=S,sigmaR=R)
+    if 'v' in ch.lower():
+        v=core.bilateral.Bilateral(v,y,sigmaS=S,sigmaR=R)
+    return core.std.ShufflePlanes([src,u,v],[0,0,0],vs.YUV)
 
 ########################################################
 ########## HERE STARTS THE COPY-PASTE SECTION ##########
