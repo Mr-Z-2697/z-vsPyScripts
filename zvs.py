@@ -37,7 +37,8 @@ functions:
 - bilateraluv
 '''
 
-def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp='cpu',mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output',limit=255,limitc=None,sigma2=None,radius2=None):
+#denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
+def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp=bm3d_mode_default,mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output',limit=255,limitc=None,sigma2=None,radius2=None):
     if lumaonly:
         chromamv=False
         chromaclip=src
@@ -93,7 +94,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
 
     return output
 
-
+#a simple mdegrain wrapper function that enough for my own use
 def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,**args):
     if thsadc==None:
         thsadc=thsad
@@ -128,8 +129,9 @@ def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
     
     return last
 
-
-def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=True,casstr=0.7,mask=True,limit=True):
+#multi-pass f3kdb with optional contra-sharpening, masking and limit filter
+#idea stolen from xyx98
+def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=True,casstr=0.3,mask=True,limit=True):
     last=db=src.fmtc.bitdepth(bits=16)
     r,y,cb,cr,gy,gc=[list(i) if isinstance(i,int) else i for i in (r,y,cb,cr,gy,gc)]
     if neo:
@@ -216,9 +218,13 @@ def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matr
         last=core.resize.Bicubic(src,format=vs.RGBS,range_in_s=src_range_s,matrix_in_s=matrix)
 
     if not ort:
-        last=core.w2xnvk.Waifu2x(last,model=model,scale=2,noise=noise,precision=precision,tile_size=tile_size)
+        if tile_size==0:
+            tile_size=[src.width,src.height]
+        elif isinstance(tile_size,int):
+            tile_size=[tile_size]*2
+        last=core.w2xncnnvk.Waifu2x(last,model=model,scale=2,noise=noise,precision=precision,tile_w=tile_size[0],tile_h=tile_size[1])
     else:
-        tile_size=512 if tile_size==0 else tile_size
+        tile_size=[src.width,src.height] if tile_size==0 else tile_size
         overlap=4 if model==2 else 8 if overlap==None else overlap
         builtin=True if model_f==model_p==None else False
         model_f='waifu2x' if model_f==None else model_f
@@ -273,7 +279,7 @@ def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,amd=True,**args):
     y,u,v=[core.std.ShufflePlanes(i,[0],vs.GRAY) for i in (y,u,v)]
     return core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
 
-
+#line mask?
 def wtfmask(src,nnrs=True,t_l=16,t_h=26,range='limited',op=[1],optc=1,bthr=1,**args):
     if nnrs:
         last=Nnrs.nnedi3_resample(src,csp=vs.RGBS)
@@ -382,7 +388,7 @@ def bilateraluv(src,ch='uv',mode='down',method='bicubic',S=1,R=0.02,**args):
         resizer=resizers[method.lower()]
         last=resizer(src,targetw,targeth,format=vs.YUV444P16,**args)
     else:
-        raise ValueError('resize mathod not supported')
+        raise ValueError('resize method not supported')
 
     y,u,v=[i(last) for i in (xvs.getY,xvs.getU,xvs.getV)]
     if 'u' in ch.lower():
@@ -761,7 +767,7 @@ def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Opt
             info+=kernels_info[index]
         if showinfo:
             last=core.text.Text(last,info.replace("\t","    "))
-        return last
+        return last.std.SetFrameProp('kindex',intval=index)
 
     last=core.std.FrameEval(luma,partial(selector,src=luma,clips=rescales),prop_src=rescales)
     if clip.format.color_family==vs.GRAY:
