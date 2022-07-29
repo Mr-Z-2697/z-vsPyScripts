@@ -601,7 +601,7 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
             mask=xvs.expand(mask,cycle=mthr[0])
             mask=xvs.inpand(mask,cycle=mthr[1])
 
-        luma_rescale=core.std.MaskedMerge(luma_rescale,luma,mask)
+        luma_rescale=core.std.MaskedMerge(luma_rescale,xvs.getY(src),mask)
     
     if show=="descale":
         return luma_de
@@ -707,7 +707,7 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
             mask=xvs.expand(mask,cycle=mthr[0])
             mask=xvs.inpand(mask,cycle=mthr[1])
 
-        luma_rescale=core.std.MaskedMerge(luma_rescale,luma,mask)
+        luma_rescale=core.std.MaskedMerge(luma_rescale,xvs.getY(src),mask)
     
     if selective:
         base=upper-lower
