@@ -522,7 +522,8 @@ def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=
 #new feature
 #mask_gen_clip: an alternative clip can be provided for diff mask generation
 #mask_operate_func: a function can be specified for mask operations after generation (e.g. expand, inpand and more)
-def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,**args):
+#linear, sigmoid: do descale in linear or sigmoid light
+def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,**args):
     if src.format.color_family not in [vs.YUV,vs.GRAY]:
         raise ValueError("input clip should be YUV or GRAY!")
 
@@ -543,6 +544,12 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     
     src=core.fmtc.bitdepth(src,bits=16)
     luma=xvs.getY(src)
+    tin='709' if args.get("tin") is None else args.get("tin")
+    min='709' if args.get("min") is None else args.get("min")
+    if linear or sigmoid:
+        luma=core.resize.Bicubic(luma,transfer_in_s=tin,transfer_s='linear',matrix_in_s=min)
+        if sigmoid:
+            luma=haf.SigmoidInverse(luma)
     if isinstance(mask_gen_clip,vs.VideoNode):
         luma=core.std.Interleave([luma,xvs.getY(mask_gen_clip)])
     ####
@@ -578,6 +585,10 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     exp=args.get("exp")
     mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
 
+    if linear or sigmoid:
+        if sigmoid:
+            luma_de=haf.SigmoidDirect(luma_de.fmtc.bitdepth(bits=16))
+        luma_de=core.resize.Bicubic(luma_de,transfer_in_s='linear',transfer_s=tin,matrix_s=min)
     luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
 
     if mask:
@@ -605,7 +616,7 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
         return core.std.ShufflePlanes([luma_rescale,src],[0,1,2],vs.YUV)
 
 #copy-paste from xyx98's xvs with some modification
-def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,selective=False,upper=0.0001,lower=0.00001,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,**args):
+def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,selective=False,upper=0.0001,lower=0.00001,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,**args):
     #for decimal resolution descale,refer to GetFnative
     if src.format.color_family not in [vs.YUV,vs.GRAY]:
         raise ValueError("input clip should be YUV or GRAY!")
@@ -630,6 +641,12 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
 
     src=core.fmtc.bitdepth(src,bits=16)
     luma=xvs.getY(src)
+    tin='709' if args.get("tin") is None else args.get("tin")
+    min='709' if args.get("min") is None else args.get("min")
+    if linear or sigmoid:
+        luma=core.resize.Bicubic(luma,transfer_in_s=tin,transfer_s='linear',matrix_in_s=min)
+        if sigmoid:
+            luma=haf.SigmoidInverse(luma)
     if isinstance(mask_gen_clip,vs.VideoNode):
         luma=core.std.Interleave([luma,xvs.getY(mask_gen_clip)])
     cargs=xvs.cropping_args(src.width,src.height,h,bh,bw)
@@ -667,6 +684,10 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
 
+    if linear or sigmoid:
+        if sigmoid:
+            luma_de=haf.SigmoidDirect(luma_de.fmtc.bitdepth(bits=16))
+        luma_de=core.resize.Bicubic(luma_de,transfer_in_s='linear',transfer_s=tin,matrix_s=min)
     luma_rescale=nnrs.nnedi3_resample(luma_de,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
 
     def calc(n,f): 
