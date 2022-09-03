@@ -370,8 +370,8 @@ def quack(src,knl={},md1={},bm1={},md2={},bm2={}):
     last=bm3d(last,iref=src,**_bm2)
     return last
 
-#use y channel as reference to repair uv channels with bilateral
-def bilateraluv(src,ch='uv',mode='down',method='bicubic',S=1,R=0.02,**args):
+#use y channel or opponent chroma channel as reference to repair uv channels with bilateral
+def bilateraluv(src,ch='uv',mode='down',method='bicubic',S=1,R=0.02,lumaref=True,crossref=False,**args):
     if mode.lower()=='up':
         targetw=src.width
         targeth=src.height
@@ -381,21 +381,34 @@ def bilateraluv(src,ch='uv',mode='down',method='bicubic',S=1,R=0.02,**args):
     else:
         raise ValueError('mode not supported')
 
-    if method.lower()=='nnrs':
-        last=Nnrs.nnedi3_resample(src,targetw,targeth,csp=vs.YUV444P16)
-    elif method.lower() in ['point','bilinear','bicubic','lanczos','spline16','spline36','spline64']:
-        resizers={'point':core.resize.Point,'bilinear':core.resize.Bilinear,'bicubic':core.resize.Bicubic,'lanczos':core.resize.Lanczos,'spline16':core.resize.Spline16,'spline36':core.resize.Spline36,'spline64':core.resize.Spline64}
-        resizer=resizers[method.lower()]
-        last=resizer(src,targetw,targeth,format=vs.YUV444P16,**args)
+    if lumaref:
+        if method.lower()=='nnrs':
+            last=Nnrs.nnedi3_resample(src,targetw,targeth,csp=vs.YUV444P16)
+        elif method.lower() in ['point','bilinear','bicubic','lanczos','spline16','spline36','spline64']:
+            resizers={'point':core.resize.Point,'bilinear':core.resize.Bilinear,'bicubic':core.resize.Bicubic,'lanczos':core.resize.Lanczos,'spline16':core.resize.Spline16,'spline36':core.resize.Spline36,'spline64':core.resize.Spline64}
+            resizer=resizers[method.lower()]
+            last=resizer(src,targetw,targeth,format=vs.YUV444P16,**args)
+        else:
+            raise ValueError('resize method not supported')
     else:
-        raise ValueError('resize method not supported')
+        last=src
 
     y,u,v=[i(last) for i in (xvs.getY,xvs.getU,xvs.getV)]
     if 'u' in ch.lower():
-        u=core.bilateral.Bilateral(u,y,sigmaS=S,sigmaR=R)
+        if lumaref:
+            ub=core.bilateral.Bilateral(u,y,sigmaS=S,sigmaR=R)
+        else:
+            ub=u
+        if crossref:
+            ub=core.bilateral.Bilateral(ub,v,sigmaS=S,sigmaR=R)
     if 'v' in ch.lower():
-        v=core.bilateral.Bilateral(v,y,sigmaS=S,sigmaR=R)
-    return core.std.ShufflePlanes([src,u,v],[0,0,0],vs.YUV)
+        if lumaref:
+            vb=core.bilateral.Bilateral(v,y,sigmaS=S,sigmaR=R)
+        else:
+            vb=v
+        if crossref:
+            vb=core.bilateral.Bilateral(vb,u,sigmaS=S,sigmaR=R)
+    return core.std.ShufflePlanes([src,ub,vb],[0,0,0],vs.YUV)
 
 ########################################################
 ########## HERE STARTS THE COPY-PASTE SECTION ##########
