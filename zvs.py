@@ -178,7 +178,7 @@ def arop(src,left=0,right=0,top=0,bottom=0): #mostly useless experimental functi
         t,b=[i if not i%subsw else 0 for i in (top,bottom)]
 
         last=core.std.Crop(src,left=l,right=r,top=t,bottom=b) if not(l==r==t==b==0) else src
-        y,u,v=[i(last) for i in (xvs.getY,xvs.getU,xvs.getV)]
+        y,u,v=xvs.extractPlanes(last)
 
         l,r=[i if i%subsw else 0 for i in (left,right)]
         t,b=[i if i%subsw else 0 for i in (top,bottom)]
@@ -256,7 +256,7 @@ def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,amd=True,**args):
     if not amd and planes==[1,1,1] and h[1]==h[2]:
         return src.knlm.KNLMeansCL(rclip=rclip,h=h[0],channels='Y',**args).knlm.KNLMeansCL(rclip=rclip,h=h[1],channels='UV',**args)
 
-    y,u,v=[i(src) for i in (xvs.getY,xvs.getU,xvs.getV)]
+    y,u,v=xvs.extractPlanes(src)
     if amd:
         y,u,v=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (y,u,v)]
     if isinstance(rclip,vs.VideoNode):
@@ -393,7 +393,7 @@ def bilateraluv(src,ch='uv',mode='down',method='bicubic',S=1,R=0.02,lumaref=True
     else:
         last=src
 
-    y,u,v=[i(last) for i in (xvs.getY,xvs.getU,xvs.getV)]
+    y,u,v=xvs.extractPlanes(last)
     if 'u' in ch.lower():
         if lumaref:
             ub=core.bilateral.Bilateral(u,y,sigmaS=S,sigmaR=R)
