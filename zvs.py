@@ -371,7 +371,10 @@ def quack(src,knl={},md1={},bm1={},md2={},bm2={}):
     return last
 
 #use y channel or opponent chroma channel as reference to repair uv channels with bilateral
-def bilateraluv(src,ch='uv',mode='down',method='bicubic',S=1,R=0.02,lumaref=True,crossref=False,**args):
+#tbilateral is much trickier to use, the "ref" doesn't even mean the same thing, just add it for testing
+#parameters you should really care about is ones in first line
+def bilateraluv(src,ch='uv',mode='down',method='spline36',S=1,R=0.02,lumaref=True,crossref=False,\
+    algo=0,P=None,T=False,diameter=3,sdev=0.5,idev=0.01,cs=1,d2=True,kerns=1,kerni=1,restype=0,**args):
     if mode.lower()=='up':
         targetw=src.width
         targeth=src.height
@@ -396,18 +399,22 @@ def bilateraluv(src,ch='uv',mode='down',method='bicubic',S=1,R=0.02,lumaref=True
     y,u,v=xvs.extractPlanes(last)
     if 'u' in ch.lower():
         if lumaref:
-            ub=core.bilateral.Bilateral(u,y,sigmaS=S,sigmaR=R)
+            ub=core.bilateral.Bilateral(u,y,sigmaS=S,sigmaR=R,algorithm=algo,PBFICnum=P) if not T else\
+                core.tbilateral.TBilateral(u,y,diameter,sdev,idev,cs,d2,kerns,kerni,restype)
         else:
             ub=u
         if crossref:
-            ub=core.bilateral.Bilateral(ub,v,sigmaS=S,sigmaR=R)
+            ub=core.bilateral.Bilateral(ub,v,sigmaS=S,sigmaR=R,algorithm=algo,PBFICnum=P) if not T else\
+                core.tbilateral.TBilateral(ub,v,diameter,sdev,idev,cs,d2,kerns,kerni,restype)
     if 'v' in ch.lower():
         if lumaref:
-            vb=core.bilateral.Bilateral(v,y,sigmaS=S,sigmaR=R)
+            vb=core.bilateral.Bilateral(v,y,sigmaS=S,sigmaR=R,algorithm=algo,PBFICnum=P) if not T else\
+                core.tbilateral.TBilateral(v,y,diameter,sdev,idev,cs,d2,kerns,kerni,restype)
         else:
             vb=v
         if crossref:
-            vb=core.bilateral.Bilateral(vb,u,sigmaS=S,sigmaR=R)
+            vb=core.bilateral.Bilateral(vb,u,sigmaS=S,sigmaR=R,algorithm=algo,PBFICnum=P) if not T else\
+                core.tbilateral.TBilateral(vb,u,diameter,sdev,idev,cs,d2,kerns,kerni,restype)
     return core.std.ShufflePlanes([src,ub,vb],[0,0,0],vs.YUV)
 
 ########################################################
