@@ -372,7 +372,7 @@ def quack(src,knl={},md1={},bm1={},md2={},bm2={}):
 
 #use y channel or opponent chroma channel as reference to repair uv channels with bilateral
 #tbilateral is much trickier to use, the "ref" doesn't even mean the same thing, just add it for testing
-#parameters you should really care about is ones in first line
+#parameters you should really care about are ones in first line
 def bilateraluv(src,ch='uv',mode='down',method='spline36',S=1,R=0.02,lumaref=True,crossref=False,\
     algo=0,P=None,T=False,diameter=3,sdev=0.5,idev=0.01,cs=1,d2=True,kerns=1,kerni=1,restype=0,**args):
     if mode.lower()=='up':
