@@ -131,22 +131,21 @@ def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
 
 #multi-pass f3kdb with optional contra-sharpening, masking and limit filter
 #idea stolen from xyx98
-def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],neo=True,casstr=0.3,mask=True,limit=True):
+def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,2],rs=[0,0],bf=[True,True],dg=[False,False],opt=[-1,-1],mt=[True,True],da=[3,3],ktv=[False,False],od=[16,16],rar=[1,1],rag=[1,1],rpr=[1,1],rpg=[1,1],passes=2,neo=True,casstr=0.3,mask=True,limit=True):
     last=db=src.fmtc.bitdepth(bits=16)
-    r,y,cb,cr,gy,gc=[list(i) if isinstance(i,int) else i for i in (r,y,cb,cr,gy,gc)]
-    if neo:
-        f3k=core.neo_f3kdb.Deband
-    else:
-        f3k=core.f3kdb.Deband
+    r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg=[[i]*999 if isinstance(i,int) else i+[i[-1]]*999 for i in (r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg)]
     
-    l1,l2,l3,l4,l5,l6=[len(i) for i in (r,y,cb,cr,gy,gc)]
-    if l1==l2==l3==l4==l5==l6:
-        passes=l6
-    else:
-        passes=min(l1,l2,l3,l4,l5,l6)
+    # l1,l2,l3,l4,l5,l6=[len(i) for i in (r,y,cb,cr,gy,gc)]
+    # if l1==l2==l3==l4==l5==l6:
+    #     passes=l6
+    # else:
+    #     passes=min(l1,l2,l3,l4,l5,l6)
 
     for i in range(passes):
-        db=f3k(db,r[i],y[i],cb[i],cr[i],gy[i],gc[i],output_depth=16)
+        if neo:
+            db=core.neo_f3kdb.Deband(db,r[i],y[i],cb[i],cr[i],gy[i],gc[i],sm[i],rs[i],bf[i],dg[i],opt[i],mt[i],da[i],ktv[i],od[i],rar[i],rag[i],rpr[i],rpg[i])
+        else:
+            db=core.f3kdb.Deband(db,r[i],y[i],cb[i],cr[i],gy[i],gc[i],sm[i],rs[i],bf[i],dg[i],opt[i],da[i],ktv[i],od[i],rar[i],rag[i],rpr[i],rpg[i])
 
     if isinstance(limit,bool) and limit:
         db=mvf.LimitFilter(db,last,thr=0.1,thrc=0.05,elast=20,planes=[0,1,2])
