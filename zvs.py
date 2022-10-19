@@ -571,12 +571,13 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     
     src=core.fmtc.bitdepth(src,bits=16)
     luma=xvs.getY(src)
-    tin='709' if args.get("tin") is None else args.get("tin")
-    min='709' if args.get("min") is None else args.get("min")
-    if linear or sigmoid:
-        luma=core.resize.Bicubic(luma,transfer_in_s=tin,transfer_s='linear',matrix_in_s=min)
-        if sigmoid:
-            luma=haf.SigmoidInverse(luma)
+    tin='1886' if args.get("tin") is None else args.get("tin")
+    fulls=False if args.get("fulls") is None else args.get("fulls")
+    fulld=True if args.get("fulld") is None else args.get("fulld")
+    if sigmoid:
+        luma=core.fmtc.transfer(luma,transs=tin,transd='sigmoid',fulls=fulls,fulld=fulld)
+    elif linear:
+        luma=core.fmtc.transfer(luma,transs=tin,transd='linear',fulls=fulls,fulld=fulld)
     if isinstance(mask_gen_clip,vs.VideoNode):
         luma=core.std.Interleave([luma,xvs.getY(mask_gen_clip)])
     ####
@@ -612,10 +613,10 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     exp=args.get("exp")
     mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
 
-    if linear or sigmoid:
-        if sigmoid:
-            luma_de=haf.SigmoidDirect(luma_de.fmtc.bitdepth(bits=16))
-        luma_de=core.resize.Bicubic(luma_de,transfer_in_s='linear',transfer_s=tin,matrix_s=min)
+    if sigmoid:
+        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
+    elif linear:
+        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
     luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
 
     if mask:
@@ -668,12 +669,13 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
 
     src=core.fmtc.bitdepth(src,bits=16)
     luma=xvs.getY(src)
-    tin='709' if args.get("tin") is None else args.get("tin")
-    min='709' if args.get("min") is None else args.get("min")
-    if linear or sigmoid:
-        luma=core.resize.Bicubic(luma,transfer_in_s=tin,transfer_s='linear',matrix_in_s=min)
-        if sigmoid:
-            luma=haf.SigmoidInverse(luma)
+    tin='1886' if args.get("tin") is None else args.get("tin")
+    fulls=False if args.get("fulls") is None else args.get("fulls")
+    fulld=True if args.get("fulld") is None else args.get("fulld")
+    if sigmoid:
+        luma=core.fmtc.transfer(luma,transs=tin,transd='sigmoid',fulls=fulls,fulld=fulld)
+    elif linear:
+        luma=core.fmtc.transfer(luma,transs=tin,transd='linear',fulls=fulls,fulld=fulld)
     if isinstance(mask_gen_clip,vs.VideoNode):
         luma=core.std.Interleave([luma,xvs.getY(mask_gen_clip)])
     cargs=xvs.cropping_args(src.width,src.height,h,bh,bw)
@@ -711,10 +713,10 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
 
-    if linear or sigmoid:
-        if sigmoid:
-            luma_de=haf.SigmoidDirect(luma_de.fmtc.bitdepth(bits=16))
-        luma_de=core.resize.Bicubic(luma_de,transfer_in_s='linear',transfer_s=tin,matrix_s=min)
+    if sigmoid:
+        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
+    elif linear:
+        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
     luma_rescale=nnrs.nnedi3_resample(luma_de,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
 
     def calc(n,f): 
@@ -757,7 +759,7 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
         return core.std.ShufflePlanes([luma_rescale,src],[0,1,2],vs.YUV)
 
 #copy-paste from xyx98's xvs with some modification
-def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Optional[int]=None,mask:bool=True,mask_dif_pix:float=2.5,postfilter_descaled=None,selective_disable:bool=False,disable_thr:float=0.00001,showinfo=False,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,**args):
+def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Optional[int]=None,mask:bool=True,mask_dif_pix:float=2.5,postfilter_descaled=None,selective_disable:bool=False,disable_thr:float=0.00001,showinfo=False,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,**args):
     clip=core.fmtc.bitdepth(clip,bits=16)
     luma=xvs.getY(clip)
     src_h,src_w=clip.height,clip.width
@@ -793,8 +795,13 @@ def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Opt
         mthr=mthr if i.get("mthr") is None else i.get("mthr")
         mgc=mask_gen_clip if i.get("mask_gen_clip") is None else i.get("mask_gen_clip")
         mof=mask_operate_func if i.get("mask_operate_func") is None else i.get("mask_operate_func")
+        lin=linear if i.get("linear") is None else i.get("linear")
+        sig=sigmoid if i.get("sigmoid") is None else i.get("sigmoid")
+        tin=tin if i.get("tin") is None else i.get("tin")
+        fulls=fulls if i.get("fulls") is None else i.get("fulls")
+        fulld=fulld if i.get("fulld") is None else i.get("fulld")
 
-        rescales.append(MRcore(luma,kernel=k,w=kw,h=kh,mask=kmask,mask_dif_pix=kmdp,postfilter_descaled=kpp,taps=ktaps,b=kb,c=kc,multiple=multiple,mthr=mthr,mask_gen_clip=mgc,mask_operate_func=mof,**args))
+        rescales.append(MRcore(luma,kernel=k,w=kw,h=kh,mask=kmask,mask_dif_pix=kmdp,postfilter_descaled=kpp,taps=ktaps,b=kb,c=kc,multiple=multiple,mthr=mthr,mask_gen_clip=mgc,mask_operate_func=mof,linear=lin,sigmoid=sig,**args))
 
 
     def selector(n,f,src,clips):
@@ -824,8 +831,13 @@ def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Opt
         return core.std.ShufflePlanes([last,clip],[0,1,2],vs.YUV)
 
 #copy-paste from xyx98's xvs with some modification
-def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix:float=2,postfilter_descaled=None,taps:int=3,b:float=0,c:float=0.5,multiple:float=1,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,**args):
+def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix:float=2,postfilter_descaled=None,taps:int=3,b:float=0,c:float=0.5,multiple:float=1,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,**args):
     src_w,src_h=clip.width,clip.height
+    clipo=clip
+    if sigmoid:
+        clip=core.fmtc.transfer(clip,transs=tin,transd='sigmoid',fulls=fulls,fulld=fulld)
+    elif linear:
+        clip=core.fmtc.transfer(clip,transs=tin,transd='linear',fulls=fulls,fulld=fulld)
     clip32=core.fmtc.bitdepth(clip,bits=32)
     if isinstance(mask_gen_clip,vs.VideoNode):
         clip32=core.std.Interleave([clip32,xvs.getY(mask_gen_clip).fmtc.bitdepth(bits=32)])
@@ -858,6 +870,10 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
 
+    if sigmoid:
+        descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
+    elif linear:
+        descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
     rescale=nnrs.nnedi3_resample(descaled,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp).fmtc.bitdepth(bits=16)
 
     if mask:
@@ -870,6 +886,6 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix
         else:
             mask=xvs.expand(mask,cycle=mthr[0])
             mask=xvs.inpand(mask,cycle=mthr[1])
-        rescale=core.std.MaskedMerge(rescale,clip,mask)
+        rescale=core.std.MaskedMerge(rescale,clipo,mask)
 
     return core.std.ModifyFrame(rescale,[diff,rescale],calc)
