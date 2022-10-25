@@ -35,7 +35,7 @@ functions:
 - rescale, rescalef, multirescale (copy-paste!)
 - quack
 - bilateraluv
-- dft, idft
+- dft, idft, dct, idct
 '''
 
 #denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
@@ -422,7 +422,7 @@ def bilateraluv(src,ch='uv',mode='down',method='spline36',S=1,R=0.02,lumaref=Tru
 #this is cool but I don't really know why I wrote this
 #some reference:
 #https://stackoverflow.com/questions/59975604/how-to-inverse-a-dft-with-magnitude-with-opencv-python
-def dft(src,d=10,spectrum=False,split=True,linear='1886'):
+def dft(src,d=10,spectrum=False,split=True,linear='1886',shift=True):
     if src.format.id != vs.GRAYS:
         raise ValueError('I thought only GRAYS input was supported.')
     import numpy as np
@@ -434,7 +434,7 @@ def dft(src,d=10,spectrum=False,split=True,linear='1886'):
         fout=f.copy()
         Dft=np.asarray(fout[0])[:h,:]
         Dft=cv2.dft(Dft,flags=cv2.DFT_COMPLEX_OUTPUT)
-        Dft=np.fft.fftshift(Dft)
+        if shift: Dft=np.fft.fftshift(Dft)
         mag,phase=cv2.cartToPolar(Dft[:,:,0],Dft[:,:,1])
         if spectrum:
             spec=np.log(mag)/d
@@ -455,7 +455,7 @@ def dft(src,d=10,spectrum=False,split=True,linear='1886'):
     return mag,phase
 
 
-def idft(mag,phase,linear='1886'):
+def idft(mag,phase,linear='1886',ishift=True):
     if not (mag.format.id==phase.format.id==vs.GRAYS):
         raise ValueError('I thought only GRAYS inputs were supported.')
     import numpy as np
@@ -466,7 +466,7 @@ def idft(mag,phase,linear='1886'):
         phase=np.asarray(f[1].copy()[0])
         real,imag=cv2.polarToCart(mag,phase)
         fr=cv2.merge([real,imag])
-        fr=np.fft.ifftshift(fr)
+        if ishift: fr=np.fft.ifftshift(fr)
         fr=cv2.idft(fr)
         fr=cv2.magnitude(fr[:,:,0],fr[:,:,1])
         fr=cv2.normalize(fr,None,f[0].props.PlaneStatsMin,f[0].props.PlaneStatsMax,cv2.NORM_MINMAX,dtype=cv2.CV_32F)
@@ -476,7 +476,66 @@ def idft(mag,phase,linear='1886'):
     if linear is not False:
         last=last.fmtc.transfer(transs='linear',transd=linear)
     return last
-        
+
+
+def dct(src):
+    if not src.format.id==vs.GRAYS:
+        raise ValueError('I thought only GRAYS input was supported.')
+    import numpy as np
+    import cv2
+    def dct(n,f):
+        fout=f.copy()
+        tr=np.asarray(fout[0])
+        tr=cv2.dct(tr)
+        np.copyto(np.asarray(fout[0]),tr)
+        return fout
+    return core.std.ModifyFrame(src,src,dct)
+
+
+def idct(src):
+    if not src.format.id==vs.GRAYS:
+        raise ValueError('I thought only GRAYS input was supported.')
+    import numpy as np
+    import cv2
+    def idct(n,f):
+        fout=f.copy()
+        tr=np.asarray(fout[0])
+        tr=cv2.idct(tr)
+        np.copyto(np.asarray(fout[0]),tr)
+        return fout
+    return core.std.ModifyFrame(src,src,idct)
+
+#I don't even know what this do, will likely be abandoned
+def dwt(src,w='Haar'):
+    if not src.format.id==vs.GRAYS:
+        raise ValueError('I thought only GRAYS input was supported.')
+    import numpy as np
+    import pywt
+    def dwt(n,f,w):
+        fout=f.copy()
+        tr=np.asarray(fout[0])
+        a,(h,v,d)=pywt.dwt2(tr,w)
+        tr=np.concatenate([np.concatenate([a,v]),np.concatenate([h,d])],axis=1)
+        np.copyto(np.asarray(fout[0]),np.float32(tr))
+        return fout
+    return core.std.ModifyFrame(src,src,partial(dwt,w=w))
+
+
+def idwt(src,w='Haar'):
+    if not src.format.id==vs.GRAYS:
+        raise ValueError('I thought only GRAYS input was supported.')
+    import numpy as np
+    import pywt
+    def dwt(n,f,w):
+        fout=f.copy()
+        tr=np.asarray(fout[0])
+        a1,a2=np.hsplit(tr,2)
+        (a,v),(h,d)=np.vsplit(a1,2),np.vsplit(a2,2)
+        tr=pywt.idwt2([a,(h,v,d)],w)
+        np.copyto(np.asarray(fout[0]),np.float32(tr))
+        return fout
+    return core.std.ModifyFrame(src,src,partial(dwt,w=w))
+
 
 ########################################################
 ########## HERE STARTS THE COPY-PASTE SECTION ##########
