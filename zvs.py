@@ -420,16 +420,19 @@ def bilateraluv(src,ch='uv',mode='down',method='spline36',S=1,R=0.02,lumaref=Tru
     return core.std.ShufflePlanes([src,ub,vb],[0,0,0],vs.YUV)
 
 #this is cool but I don't really know why I wrote this
-def dft(src,d=10,spectrum=False,split=True):
+#some reference:
+#https://stackoverflow.com/questions/59975604/how-to-inverse-a-dft-with-magnitude-with-opencv-python
+def dft(src,d=10,spectrum=False,split=True,linear='1886'):
     if src.format.id != vs.GRAYS:
         raise ValueError('I thought only GRAYS input was supported.')
     import numpy as np
     import cv2
+    if linear is not False:
+        src=src.fmtc.transfer(transs=linear,transd='linear')
+    src=src.std.PlaneStats()
     def dft(n,f,h):
         fout=f.copy()
         Dft=np.asarray(fout[0])[:h,:]
-        fout.props.amin=float(np.amin(Dft,(0,1)))
-        fout.props.amax=float(np.amax(Dft,(0,1)))
         Dft=cv2.dft(Dft,flags=cv2.DFT_COMPLEX_OUTPUT)
         Dft=np.fft.fftshift(Dft)
         mag,phase=cv2.cartToPolar(Dft[:,:,0],Dft[:,:,1])
@@ -452,7 +455,7 @@ def dft(src,d=10,spectrum=False,split=True):
     return mag,phase
 
 
-def idft(mag,phase):
+def idft(mag,phase,linear='1886'):
     if not (mag.format.id==phase.format.id==vs.GRAYS):
         raise ValueError('I thought only GRAYS inputs were supported.')
     import numpy as np
@@ -466,10 +469,13 @@ def idft(mag,phase):
         fr=np.fft.ifftshift(fr)
         fr=cv2.idft(fr)
         fr=cv2.magnitude(fr[:,:,0],fr[:,:,1])
-        fr=cv2.normalize(fr,None,f[0].props.amin,f[0].props.amax,cv2.NORM_MINMAX,dtype=cv2.CV_32F)
+        fr=cv2.normalize(fr,None,f[0].props.PlaneStatsMin,f[0].props.PlaneStatsMax,cv2.NORM_MINMAX,dtype=cv2.CV_32F)
         np.copyto(np.asarray(fout[0]),fr)
         return fout
-    return core.std.ModifyFrame(mag,[mag,phase],idft)
+    last=core.std.ModifyFrame(mag,[mag,phase],idft)
+    if linear is not False:
+        last=last.fmtc.transfer(transs='linear',transd=linear)
+    return last
         
 
 ########################################################
