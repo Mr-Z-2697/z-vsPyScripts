@@ -35,6 +35,7 @@ functions:
 - rescale, rescalef, multirescale (copy-paste!)
 - quack
 - bilateraluv
+- dft, idft
 '''
 
 #denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
@@ -279,16 +280,18 @@ def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,amd=True,**args):
     return core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
 
 #line mask?
-def wtfmask(src,nnrs=True,t_l=16,t_h=26,range='limited',op=[1],optc=1,bthr=1,**args):
+def wtfmask(src,nnrs=True,t_l=16,t_h=26,range='limited',op=[1],optc=1,bin=True,bthr=1,**args):
     if nnrs:
         last=Nnrs.nnedi3_resample(src,csp=vs.RGBS)
     else:
         last=core.resize.Bicubic(src,format=vs.RGBS,matrix_in=1)
     last=core.tcanny.TCanny(last,t_l=t_l,t_h=t_h,op=optc,**args)
     if range in ['full','pc']:
-        last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='full').std.Binarize(256*bthr,0,65535)
+        last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='full')
+        if bin: last=last.std.Binarize(256*bthr,0,65535)
     else:
-        last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='limited').std.Binarize(256*(16+(235-16)/256*bthr),16*256,235*256)
+        last=last.resize.Bicubic(format=vs.GRAY16,matrix=1,range_s='limited')
+        if bin: last=last.std.Binarize(256*(16+(235-16)/256*bthr),16*256,235*256)
     f=[core.std.Minimum,core.std.Maximum,core.std.Deflate,core.std.Inflate]
     for i in op:
         last=f[i](last)
@@ -415,6 +418,59 @@ def bilateraluv(src,ch='uv',mode='down',method='spline36',S=1,R=0.02,lumaref=Tru
             vb=core.bilateral.Bilateral(vb,u,sigmaS=S,sigmaR=R,algorithm=algo,PBFICnum=P) if not T else\
                 core.tbilateral.TBilateral(vb,u,diameter,sdev,idev,cs,d2,kerns,kerni,restype)
     return core.std.ShufflePlanes([src,ub,vb],[0,0,0],vs.YUV)
+
+#this is cool but I don't really know why I wrote this
+def dft(src,d=10,spectrum=False,split=True):
+    if src.format.id != vs.GRAYS:
+        raise ValueError('I thought only GRAYS input was supported.')
+    import numpy as np
+    import cv2
+    def dft(n,f,h):
+        fout=f.copy()
+        Dft=np.asarray(fout[0])[:h,:]
+        fout.props.amin=float(np.amin(Dft,(0,1)))
+        fout.props.amax=float(np.amax(Dft,(0,1)))
+        Dft=cv2.dft(Dft,flags=cv2.DFT_COMPLEX_OUTPUT)
+        Dft=np.fft.fftshift(Dft)
+        mag,phase=cv2.cartToPolar(Dft[:,:,0],Dft[:,:,1])
+        if spectrum:
+            spec=np.log(mag)/d
+            Stack=np.concatenate([mag,phase,spec])
+        else:
+            Stack=np.concatenate([mag,phase])
+        np.copyto(np.asarray(fout[0]),Stack)
+        return fout
+    stack=core.std.StackVertical([src]*(2+spectrum))
+    stack=core.std.ModifyFrame(stack,stack,partial(dft,h=src.height))
+    if not split:
+        return stack
+    mag=stack.std.Crop(bottom=src.height*(1+spectrum))
+    phase=stack.std.Crop(top=src.height,bottom=src.height*(0+spectrum))
+    if spectrum:
+        spec=stack.std.Crop(top=src.height*2)
+        return mag,phase,spec
+    return mag,phase
+
+
+def idft(mag,phase):
+    if not (mag.format.id==phase.format.id==vs.GRAYS):
+        raise ValueError('I thought only GRAYS inputs were supported.')
+    import numpy as np
+    import cv2
+    def idft(n,f):
+        fout=f[0].copy()
+        mag=np.asarray(f[0].copy()[0])
+        phase=np.asarray(f[1].copy()[0])
+        real,imag=cv2.polarToCart(mag,phase)
+        fr=cv2.merge([real,imag])
+        fr=np.fft.ifftshift(fr)
+        fr=cv2.idft(fr)
+        fr=cv2.magnitude(fr[:,:,0],fr[:,:,1])
+        fr=cv2.normalize(fr,None,f[0].props.amin,f[0].props.amax,cv2.NORM_MINMAX,dtype=cv2.CV_32F)
+        np.copyto(np.asarray(fout[0]),fr)
+        return fout
+    return core.std.ModifyFrame(mag,[mag,phase],idft)
+        
 
 ########################################################
 ########## HERE STARTS THE COPY-PASTE SECTION ##########
