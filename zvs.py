@@ -569,13 +569,14 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
     if preset2 is None:
         preset2=preset
 
-    if preset not in ["fast","lc","np","high"] or preset2 not in ["fast","lc","np","high"]:
-        raise ValueError("preset and preset2 must be 'fast','lc','np',or'high'")
+    if preset not in ["fast","lc","lcm","np","high"] or preset2 not in ["fast","lc","lcm","np","high"]:
+        raise ValueError("preset and preset2 must be 'fast','lc','lcm','np',or'high'")
 
     parmas1={
         #block_step,bm_range, ps_num, ps_range
         "fast":[8,9,2,4],
         "lc"  :[6,9,2,4],
+        "lcm"  :[5,9,2,4],
         "np"  :[4,16,2,5],
         "high":[3,16,2,7],
     }
@@ -584,6 +585,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         #block_step,bm_range, ps_num, ps_range
         "fast":[8,7,2,4],
         "lc"  :[6,9,2,4],
+        "lcm"  :[5,9,2,4],
         "np"  :[4,12,2,5],
         "high":[3,16,2,7],
     }
@@ -592,6 +594,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         #block_step,bm_range, ps_num, ps_range
         "fast":[7,9,2,5],
         "lc"  :[5,9,2,5],
+        "lcm"  :[6,9,2,5],
         "np"  :[3,16,2,6],
         "high":[2,16,2,8],
     }
@@ -600,6 +603,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         #block_step,bm_range, ps_num, ps_range
         "fast":[7,7,2,5],
         "lc"  :[5,9,2,5],
+        "lcm"  :[6,9,2,5],
         "np"  :[3,12,2,6],
         "high":[2,16,2,8],
     }
@@ -647,7 +651,12 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
             if iterates:
                 outputs.append(core.fmtc.bitdepth(flt,bits=bits,dmode=dmode) if not keepfloat else flt)
 
-    return core.fmtc.bitdepth(flt,bits=bits,dmode=dmode) if not keepfloat else flt if not iterates else outputs
+    if iterates:
+        return outputs
+    elif keepfloat:
+        return flt
+    else:
+        return core.fmtc.bitdepth(flt,bits=bits,dmode=dmode)
 
 #copy-paste from xyx98's xvs
 def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=0,ps_num=2,ps_range=4,chroma=False,fast=True,extractor_exp=0,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",vt=0):
