@@ -350,13 +350,16 @@ def n3pv(*args,**kwargs):
 
 #quack quack, I'll take your grains
 #a dumb-ass func may be suitable for old movies with heavy dynamic grains
-def quack(src,knl={},md1={},bm1={},md2={},bm2={}):
+def quack(src,median=None,knl={},md1={},bm1={},md2={},bm2={}):
     _knl={'amd':False,'a':1,'s':2,'d':3,'h':2}
     _md1={'thsad':250,'thscd1':250,'limit':768,'tr':3}
     _bm1={'sigma':[2,2,2],'radius':1}
     _md2={'thsad':250,'thscd1':250,'limit':768,'tr':3}
     _bm2={'sigma':[1,1,1],'radius':1}
-    _knl.update(knl)
+    if median is None:
+        median=knl!=False
+    if not knl==False:
+        _knl.update(knl)
     _md1.update(md1)
     _bm1.update(bm1)
     _md2.update(md2)
@@ -364,8 +367,14 @@ def quack(src,knl={},md1={},bm1={},md2={},bm2={}):
     if src.format.bits_per_sample!=16:
         src=src.fmtc.bitdepth(bits=16)
     last=src
-    m=last.std.Median()
-    n=knl4a(last,rclip=m,**_knl)
+    if median:
+        m=last.std.Median()
+    else:
+        m=src
+    if knl==False:
+        n=m
+    else:
+        n=knl4a(last,rclip=m,**_knl)
     last=zmde(last,pref=n,**_md1)
     last=bm3d(last,iref=src,**_bm1)
     last=zmde(src,pref=last,**_md2)
@@ -680,7 +689,7 @@ def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=
 #mask_gen_clip: an alternative clip can be provided for diff mask generation
 #mask_operate_func: a function can be specified for mask operations after generation (e.g. expand, inpand and more)
 #linear, sigmoid: do descale in linear or sigmoid light
-def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,**args):
+def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
     if src.format.color_family not in [vs.YUV,vs.GRAY]:
         raise ValueError("input clip should be YUV or GRAY!")
 
@@ -747,7 +756,11 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
         luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
     elif linear:
         luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
-    luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
+    if callable(custom_nnedi3down):
+        luma_rescale=nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode)
+        luma_rescale=custom_nnedi3down(luma_rescale,src_w,src_h).fmtc.bitdepth(bits=16)
+    else:
+        luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
 
     if mask:
         if not isinstance(mask_gen_clip,vs.VideoNode):
@@ -774,7 +787,7 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
         return core.std.ShufflePlanes([luma_rescale,src],[0,1,2],vs.YUV)
 
 #copy-paste from xyx98's xvs with some modification
-def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,selective=False,upper=0.0001,lower=0.00001,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,**args):
+def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,selective=False,upper=0.0001,lower=0.00001,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
     #for decimal resolution descale,refer to GetFnative
     if src.format.color_family not in [vs.YUV,vs.GRAY]:
         raise ValueError("input clip should be YUV or GRAY!")
@@ -842,12 +855,19 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     etype=args.get("etype")
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
+    mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
 
     if sigmoid:
         luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
     elif linear:
         luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
-    luma_rescale=nnrs.nnedi3_resample(luma_de,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
+    if callable(custom_nnedi3down):
+        _cargs=cargs.nnrs_gen()
+        del _cargs['target_width'],_cargs['target_height']
+        luma_rescale=nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,**_cargs)
+        luma_rescale=custom_nnedi3down(luma_rescale,src_w,src_h).fmtc.bitdepth(bits=16)
+    else:
+        luma_rescale=nnrs.nnedi3_resample(luma_de,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
 
     def calc(n,f): 
         fout=f[1].copy()
@@ -961,7 +981,7 @@ def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Opt
         return core.std.ShufflePlanes([last,clip],[0,1,2],vs.YUV)
 
 #copy-paste from xyx98's xvs with some modification
-def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix:float=2,postfilter_descaled=None,taps:int=3,b:float=0,c:float=0.5,multiple:float=1,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,**args):
+def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix:float=2,postfilter_descaled=None,taps:int=3,b:float=0,c:float=0.5,multiple:float=1,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,custom_nnedi3down=False,**args):
     src_w,src_h=clip.width,clip.height
     clipo=clip
     if sigmoid:
@@ -999,12 +1019,17 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix
     etype=args.get("etype")
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
+    mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
 
     if sigmoid:
         descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
     elif linear:
         descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
-    rescale=nnrs.nnedi3_resample(descaled,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp).fmtc.bitdepth(bits=16)
+    if callable(custom_nnedi3down):
+        luma_rescale=nnrs.nnedi3_resample(descaled,descaled.width*2,descaled.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode)
+        luma_rescale=custom_nnedi3down(luma_rescale,src_w,src_h).fmtc.bitdepth(bits=16)
+    else:
+        luma_rescale=nnrs.nnedi3_resample(descaled,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
 
     if mask:
         if not isinstance(mask_gen_clip,vs.VideoNode):
