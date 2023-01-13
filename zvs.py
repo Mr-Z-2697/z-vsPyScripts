@@ -114,9 +114,8 @@ def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
     sup=core.mv.Super(pref,hpad=blksize,vpad=blksize,sharp=sharp,rfilter=rfilter,pel=pel)
     sup2=core.mv.Super(last,hpad=blksize,vpad=blksize,sharp=sharp,levels=1,pel=pel)
 
-    mvfw=[core.mv.Analyse(sup,isb=False,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)]
-    mvbw=[core.mv.Analyse(sup,isb=True,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)]
-    for i in range(2,tr+1):
+    mvfw,mvbw=[],[]
+    for i in range(1,tr+1):
         mvfw.append(core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv))
         mvbw.append(core.mv.Analyse(sup,isb=True,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv))
 
