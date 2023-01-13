@@ -594,8 +594,6 @@ def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,ker
     last=src
     if mopf==None:
         mopf=lambda x: xvs.inpand(xvs.expand(x,cycle=2),cycle=2)
-    #####################
-    #last=xvs.rescale(src,h=720,kernel='debilinear',mask_dif_pix=3,nns=3,nsize=3,qual=2,show='result')
 
     luma=xvs.getY(last)
 
