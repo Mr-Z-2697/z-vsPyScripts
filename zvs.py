@@ -36,6 +36,8 @@ functions:
 - quack
 - bilateraluv
 - dft, idft, dct, idct
+- badlyscaledborderdetect
+- rescaleandtrytounfuckborders
 '''
 
 #denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
@@ -539,6 +541,98 @@ def idwt(src,w='Haar'):
         return fout
     return core.std.ModifyFrame(src,src,partial(dwt,w=w))
 
+#badly scaled border detect
+def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,conditionmode='or',valuemode='avg',thr=0.9,leftline1pos=0,leftline2pos=1,rightline1pos=0,rightline2pos=1,topline1pos=0,topline2pos=1,bottomline1pos=0,bottomline2pos=1):
+    cliplist=[src]
+    luma=xvs.getY(src)
+    def sel1(n,f):
+        fout=f[0].copy()
+        if valuemode=='avg':
+            fout.props.frac=f[0].props.PlaneStatsAverage/f[1].props.PlaneStatsAverage
+        elif valuemode=='max':
+            fout.props.frac=f[0].props.PlaneStatsMax/f[1].props.PlaneStatsMax
+        return fout
+    if left:
+        ll1=core.std.Crop(luma,left=leftline1pos,right=luma.width-1-leftline1pos).std.PlaneStats()
+        ll2=core.std.Crop(luma,left=leftline2pos,right=luma.width-1-leftline2pos).std.PlaneStats()
+        lf=core.std.ModifyFrame(ll1,[ll1,ll2],sel1)
+        cliplist.append(lf)
+    if right:
+        rl1=core.std.Crop(luma,right=rightline1pos,left=luma.width-1-rightline1pos).std.PlaneStats()
+        rl2=core.std.Crop(luma,right=rightline2pos,left=luma.width-1-rightline2pos).std.PlaneStats()
+        rf=core.std.ModifyFrame(rl1,[rl1,rl2],sel1)
+        cliplist.append(rf)
+    if top:
+        tl1=core.std.Crop(luma,top=topline1pos,bottom=luma.height-1-topline1pos).std.PlaneStats()
+        tl2=core.std.Crop(luma,top=topline2pos,bottom=luma.height-1-topline2pos).std.PlaneStats()
+        tf=core.std.ModifyFrame(tl1,[tl1,tl2],sel1)
+        cliplist.append(tf)
+    if bottom:
+        bl1=core.std.Crop(luma,bottom=bottomline1pos,top=luma.height-1-bottomline1pos).std.PlaneStats()
+        bl2=core.std.Crop(luma,bottom=bottomline2pos,top=luma.height-1-bottomline2pos).std.PlaneStats()
+        bf=core.std.ModifyFrame(bl1,[bl1,bl2],sel1)
+        cliplist.append(bf)
+    def sel2(n,f):
+        fout=f[0].copy()
+        ftot=len(f)
+        if conditionmode=='or':
+            isbad=False
+            for i in range(1,ftot):
+                isbad=isbad or f[i].props.frac<thr
+        elif conditionmode=='and':
+            isbad=True
+            for i in range(1,ftot):
+                isbad=isbad and f[i].props.frac<thr
+        fout.props.badborder=isbad
+        return fout
+    return core.std.ModifyFrame(src,cliplist,sel2)
+
+#rescale and try to unfuck border, target on highly specific situation
+def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,kernel='bilinear',nns=3,nsize=3,qual=2,pscrn=1,show='result'):
+    if src.format.bits_per_sample!=16:
+        src=src.fmtc.bitdepth(bits=16)
+    last=src
+    if mopf==None:
+        mopf=lambda x: xvs.inpand(xvs.expand(x,cycle=2),cycle=2)
+    #####################
+    #last=xvs.rescale(src,h=720,kernel='debilinear',mask_dif_pix=3,nns=3,nsize=3,qual=2,show='result')
+
+    luma=xvs.getY(last)
+
+    luma_de=eval(f'core.descale.De{kernel.lower()}(luma.fmtc.bitdepth(bits=32),{w},{h},src_top=-1,src_left=-1)')
+    luma_de2=eval(f'core.descale.De{kernel.lower()}(luma.fmtc.bitdepth(bits=32),{w},{h},src_top=1,src_left=1)')
+    luma_up=eval(f'core.resize.{kernel.capitalize()}(luma_de,1920,1080,src_top=-1,src_left=-1).fmtc.bitdepth(bits=16,dmode=1)')
+    ###
+    luma_de1=luma_de.std.Crop(right=1,bottom=1).std.AddBorders(left=1,top=1,color=0)
+    luma_de2=luma_de2.std.Crop(left=1,top=1).std.AddBorders(right=1,bottom=1,color=0)
+    luma_rescale1=Nnrs.nnedi3_dh(luma_de1,mode=nnrs_mode_default,nns=nns,nsize=nsize,qual=qual,pscrn=pscrn,field=0).std.Transpose()
+    luma_rescale1=Nnrs.nnedi3_dh(luma_rescale1,mode=nnrs_mode_default,nns=nns,nsize=nsize,qual=qual,pscrn=pscrn,field=0).std.Transpose()
+    luma_rescale1=core.resize.Bicubic(luma_rescale1,1920,1080)
+    luma_rescale2=Nnrs.nnedi3_dh(luma_de2,mode=nnrs_mode_default,nns=nns,nsize=nsize,qual=qual,pscrn=pscrn,field=1).std.Transpose()
+    luma_rescale2=Nnrs.nnedi3_dh(luma_rescale2,mode=nnrs_mode_default,nns=nns,nsize=nsize,qual=qual,pscrn=pscrn,field=1).std.Transpose()
+    luma_rescale2=core.resize.Bicubic(luma_rescale2,1920,1080)
+    luma_rescale1=luma_rescale1.resize.Bicubic(src_left=0.5,src_top=0.5,src_width=1920,src_height=1080)
+    luma_rescale2=luma_rescale2.resize.Bicubic(src_left=-0.5,src_top=-0.5,src_width=1920,src_height=1080)
+    luma_edge=core.std.MaskedMerge(luma_rescale1,luma_rescale2,bordermask(luma,t=4,l=4,d=32)).fmtc.bitdepth(bits=16)
+
+    miss_mask=core.akarin.Expr(luma,"X 1915 > Y 4 < and X 4 < Y 1075 > and or  65535 0 ?")
+    ###
+    luma_rescale=Nnrs.nnedi3_resample(luma_de,1920,1080,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-1,src_left=-1).fmtc.bitdepth(bits=16)
+    luma_rescale=core.std.MaskedMerge(luma_rescale,luma_edge,bordermask(luma,4,4,4,4))
+
+    luma_fixedge=core.edgefixer.Continuity(luma,left=1,right=1,top=1,bottom=1,radius=3)
+    luma_rescale=core.std.MaskedMerge(luma_rescale,luma_fixedge,miss_mask)
+
+    mask=core.std.Expr([luma,luma_up],"x y - abs").std.Binarize(mask_dif_pix*256)
+    mask=mopf(mask)
+    b=4
+    mask=core.std.Crop(mask,b,b,b,b).std.AddBorders(b,b,b,b,color=0)
+    if show=='mask': return mask
+
+    luma_rescale=core.std.MaskedMerge(luma_rescale,luma,mask)
+    last=core.std.ShufflePlanes([luma_rescale,last],[0,1,2],vs.YUV)
+    return last
+    
 
 ########################################################
 ########## HERE STARTS THE COPY-PASTE SECTION ##########
