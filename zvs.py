@@ -541,7 +541,7 @@ def idwt(src,w='Haar'):
     return core.std.ModifyFrame(src,src,partial(dwt,w=w))
 
 #badly scaled border detect
-def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,conditionmode='or',valuemode='avg',thr=0.9,leftline1pos=0,leftline2pos=1,rightline1pos=0,rightline2pos=1,topline1pos=0,topline2pos=1,bottomline1pos=0,bottomline2pos=1):
+def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,conditionmode='or',valuemode='avg',showfrac=False,thr=0.9,leftline1pos=0,leftline2pos=1,rightline1pos=0,rightline2pos=1,topline1pos=0,topline2pos=1,bottomline1pos=0,bottomline2pos=1):
     cliplist=[src]
     luma=xvs.getY(src)
     def sel1(n,f):
@@ -551,38 +551,47 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
         elif valuemode=='max':
             fout.props.frac=f[0].props.PlaneStatsMax/f[1].props.PlaneStatsMax
         return fout
+    letters=' '
     if left:
         ll1=core.std.Crop(luma,left=leftline1pos,right=luma.width-1-leftline1pos).std.PlaneStats()
         ll2=core.std.Crop(luma,left=leftline2pos,right=luma.width-1-leftline2pos).std.PlaneStats()
         lf=core.std.ModifyFrame(ll1,[ll1,ll2],sel1)
         cliplist.append(lf)
+        letters+='L'
     if right:
         rl1=core.std.Crop(luma,right=rightline1pos,left=luma.width-1-rightline1pos).std.PlaneStats()
         rl2=core.std.Crop(luma,right=rightline2pos,left=luma.width-1-rightline2pos).std.PlaneStats()
         rf=core.std.ModifyFrame(rl1,[rl1,rl2],sel1)
         cliplist.append(rf)
+        letters+='R'
     if top:
         tl1=core.std.Crop(luma,top=topline1pos,bottom=luma.height-1-topline1pos).std.PlaneStats()
         tl2=core.std.Crop(luma,top=topline2pos,bottom=luma.height-1-topline2pos).std.PlaneStats()
         tf=core.std.ModifyFrame(tl1,[tl1,tl2],sel1)
         cliplist.append(tf)
+        letters+='T'
     if bottom:
         bl1=core.std.Crop(luma,bottom=bottomline1pos,top=luma.height-1-bottomline1pos).std.PlaneStats()
         bl2=core.std.Crop(luma,bottom=bottomline2pos,top=luma.height-1-bottomline2pos).std.PlaneStats()
         bf=core.std.ModifyFrame(bl1,[bl1,bl2],sel1)
         cliplist.append(bf)
+        letters+='B'
     def sel2(n,f):
         fout=f[0].copy()
         ftot=len(f)
+        if showfrac: fracs=[]
         if conditionmode=='or':
             isbad=False
             for i in range(1,ftot):
                 isbad=isbad or f[i].props.frac<thr
+                if showfrac: fracs.append(f'{letters[i]}?:{f[i].props.frac}')
         elif conditionmode=='and':
             isbad=True
             for i in range(1,ftot):
                 isbad=isbad and f[i].props.frac<thr
+                if showfrac: fracs.append(f'{letters[i]}?:{f[i].props.frac}')
         fout.props.badborder=isbad
+        if showfrac: fout.props.borderfracs=', '.join(fracs)
         return fout
     return core.std.ModifyFrame(src,cliplist,sel2)
 
