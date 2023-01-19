@@ -27,7 +27,7 @@ functions:
 - arop
 - pfinesharp (rpfilter (rpclip))
 - w2xaa
-- knl4a
+- knl4a (nlm)
 - wtfmask
 - bordermask
 - bm3d (copy-paste!)
@@ -127,8 +127,8 @@ def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
 
 #multi-pass f3kdb with optional contra-sharpening, masking and limit filter
 #idea stolen from xyx98
-def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,2],rs=[0,0],bf=[True,True],dg=[False,False],opt=[-1,-1],mt=[True,True],da=[3,3],ktv=[False,False],od=[16,16],rar=[1,1],rag=[1,1],rpr=[1,1],rpg=[1,1],passes=2,neo=True,casstr=0.3,mask=True,limit=True):
-    last=db=src.fmtc.bitdepth(bits=16)
+def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,2],rs=[0,0],bf=[True,True],dg=[False,False],opt=[-1,-1],mt=[True,True],da=[3,3],ktv=[False,False],od=[16,16],rar=[1,1],rag=[1,1],rpr=[1,1],rpg=[1,1],passes=2,neo=True,casstr=0.3,mask=True,limit=True,s16=True):
+    last=db=src.fmtc.bitdepth(bits=16) if s16 else src
     r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg=[[i]*999 if isinstance(i,int) else i+[i[-1]]*999 for i in (r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg)]
     
     # l1,l2,l3,l4,l5,l6=[len(i) for i in (r,y,cb,cr,gy,gc)]
@@ -237,7 +237,10 @@ def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matr
     return last
 
 #a workaround for amd rdna graphic cards to use knlmeanscl
-def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,amd=True,**args):
+def knl4a(src,*args,**kwargs):
+    return nlm(src,*args,**kwargs,amd=True,mode='ocl')
+def nlm(src,planes=[1,1,1],rclip=None,h=1.2,amd=False,mode='ocl',**args):
+    NLM={'ocl':core.knlm.KNLMeansCL,'cuda':core.nlm_cuda.NLMeans}[mode]
     if isinstance(h,list):
         if len(h)>=3:
             pass
@@ -249,7 +252,8 @@ def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,amd=True,**args):
         h=[h,h,h]
 
     if not amd and planes==[1,1,1] and h[1]==h[2]:
-        return src.knlm.KNLMeansCL(rclip=rclip,h=h[0],channels='Y',**args).knlm.KNLMeansCL(rclip=rclip,h=h[1],channels='UV',**args)
+        if mode=='ocl':
+            return src.knlm.KNLMeansCL(rclip=rclip,h=h[0],channels='Y',**args).knlm.KNLMeansCL(rclip=rclip,h=h[1],channels='UV',**args)
 
     y,u,v=xvs.extractPlanes(src)
     if amd:
@@ -261,16 +265,16 @@ def knl4a(src,planes=[1,1,1],rclip=None,h=1.2,amd=True,**args):
     else:
         ry=ru=rv=None
     if planes[0]:
-        y=core.knlm.KNLMeansCL(y,rclip=ry,h=h[0],**args)
+        y=NLM(y,rclip=ry,h=h[0],**args)
     if planes[1] and planes[2] and h[1]==h[2]:
-        uv=core.knlm.KNLMeansCL(src,rclip=rclip,h=h[1],channels='UV',**args)
+        uv=NLM(src,rclip=rclip,h=h[1],channels='UV',**args)
         u=xvs.getU(uv)
         v=xvs.getV(uv)
     else:
         if planes[1]:
-            u=core.knlm.KNLMeansCL(u,rclip=ru,h=h[1],**args)
+            u=NLM(u,rclip=ru,h=h[1],**args)
         if planes[2]:
-            v=core.knlm.KNLMeansCL(v,rclip=rv,h=h[2],**args)
+            v=NLM(v,rclip=rv,h=h[2],**args)
     y,u,v=[core.std.ShufflePlanes(i,[0],vs.GRAY) for i in (y,u,v)]
     return core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
 
