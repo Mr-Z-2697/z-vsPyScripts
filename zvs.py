@@ -373,7 +373,7 @@ def quack(src,median=None,knl={},md1={},bm1={},md2={},bm2={}):
     if knl==False:
         n=m
     else:
-        n=knl4a(last,rclip=m,**_knl)
+        n=nlm(last,rclip=m,**_knl)
     last=zmde(last,pref=n,**_md1)
     last=bm3d(last,iref=src,**_bm1)
     last=zmde(src,pref=last,**_md2)
