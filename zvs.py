@@ -38,6 +38,7 @@ functions:
 - dft, idft, dct, idct
 - badlyscaledborderdetect
 - rescaleandtrytounfuckborders
+- isvse, isvspipe
 '''
 
 #denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
@@ -643,6 +644,12 @@ def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,ker
     last=core.std.ShufflePlanes([luma_rescale,last],[0,1,2],vs.YUV)
     return last
     
+#for no reason
+def isvse():
+    return sys.executable.find('vsedit')!=-1
+def isvspipe():
+    return sys.executable.find('vspipe')!=-1
+
 
 ########################################################
 ########## HERE STARTS THE COPY-PASTE SECTION ##########
