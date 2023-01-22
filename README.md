@@ -14,7 +14,7 @@ Z's weird vapoursynth python script(s)
 [havsfunc](https://github.com/HomeOfVapourSynthEvolution/havsfunc)  
 [muvs+muvsfunc](https://github.com/WolframRhodium/muvsfunc)  
 [nnedi3_resample](https://github.com/HomeOfVapourSynthEvolution/nnedi3_resample)  
-[xvs+nnedi3_resampleCL+znedi3_resample](https://github.com/xyx98/my-vapoursynth-script)  
+[xvs](https://github.com/xyx98/my-vapoursynth-script)  
 
 ### plugins
 [BM3D](https://github.com/HomeOfVapourSynthEvolution/VapourSynth-BM3D)  
