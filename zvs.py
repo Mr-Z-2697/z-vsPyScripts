@@ -39,10 +39,11 @@ functions:
 - badlyscaledborderdetect
 - rescaleandtrytounfuckborders
 - isvse, isvspipe
+- fmvfps
 '''
 
 #denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
-def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp=bm3d_mode_default,mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,nl=100,contrasharp=1,to709=1,show='output',limit=255,limitc=None,sigma2=None,radius2=None):
+def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp=bm3d_mode_default,vt=0,mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,truemotion=False,nl=100,contrasharp=1,to709=1,show='output',limit=255,limitc=None,sigma2=None,radius2=None):
     if lumaonly:
         chromamv=False
         chromaclip=src
@@ -52,7 +53,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     denoised=sdr=core.resize.Bicubic(src,transfer_in=16,transfer=1,nominal_luminance=nl) if to709 else src
     if mdegrain:
         limitc=limitc if limitc else limit
-        denoised=zmde(denoised,tr=tr,thsad=thsad,thsadc=thsadc,blksize=blksize,overlap=overlap,pel=pel,thscd1=thscd1,thscd2=thscd2,chromamv=chromamv,limit=limit,limitc=limitc)
+        denoised=zmde(denoised,tr=tr,thsad=thsad,thsadc=thsadc,blksize=blksize,overlap=overlap,pel=pel,thscd1=thscd1,thscd2=thscd2,truemotion=truemotion,chromamv=chromamv,limit=limit,limitc=limitc)
         if show=='mde':
             return denoised
 
@@ -62,22 +63,30 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
             return denoised
     
     if not bm3dtyp=='no':
-        if bm3dtyp=='cpu':
-            BM3D=core.bm3dcpu.BM3D
-        elif bm3dtyp=='cuda':
-            BM3D=core.bm3dcuda.BM3D
-        elif bm3dtyp=='cuda_rtc':
-            BM3D=core.bm3dcuda_rtc.BM3D
+        if vt==0:
+            if bm3dtyp=='cpu':
+                BM3D=core.bm3dcpu.BM3D
+            elif bm3dtyp=='cuda':
+                BM3D=core.bm3dcuda.BM3D
+            elif bm3dtyp=='cuda_rtc':
+                BM3D=core.bm3dcuda_rtc.BM3D
+        elif vt==1:
+            if bm3dtyp=='cpu':
+                BM3D=core.bm3dcpu.BM3Dv2
+            elif bm3dtyp=='cuda':
+                BM3D=core.bm3dcuda.BM3Dv2
+            elif bm3dtyp=='cuda_rtc':
+                BM3D=core.bm3dcuda_rtc.BM3Dv2
 
         bdenoised=BM3D(denoised.fmtc.bitdepth(bits=32),sigma=sigma,radius=radius,block_step=block_step)
-        if not radius==0:
+        if radius>0 and vt==0:
             bdenoised=core.bm3d.VAggregate(bdenoised,radius,1)
 
         if finalest:
             sigma2=sigma2 if sigma2 else sigma
             radius2=radius2 if radius2 else radius
             bdenoised=BM3D(denoised.fmtc.bitdepth(bits=32),ref=bdenoised,sigma=sigma2,radius=radius2,block_step=max(block_step-1,1))
-            if not radius2==0:
+            if radius2>0 and vt==0:
                 bdenoised=core.bm3d.VAggregate(bdenoised,radius2,1)
 
         denoised=bdenoised.fmtc.bitdepth(bits=16)
@@ -650,6 +659,15 @@ def isvse():
 def isvspipe():
     return sys.executable.find('vspipe')!=-1
 
+#fake mvtools fps
+def fmvfps(src,num=60,den=1,blend=True):
+    _fn=src.num_frames
+    _d=core.std.BlankClip(src,length=1)
+    sup=core.mv.Super(_d,pel=1,levels=1)*_fn
+    mv=core.mv.Analyse(sup,isb=True,truemotion=False,levels=1)[0]*_fn
+    mv2=core.mv.Analyse(sup,truemotion=False,levels=1)[0]*_fn
+    return core.mv.BlockFPS(src,sup,mv,mv2,num,den,mode=0,blend=blend)
+
 
 ########################################################
 ########## HERE STARTS THE COPY-PASTE SECTION ##########
@@ -683,8 +701,8 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
     if preset2 is None:
         preset2=preset
 
-    if preset not in ["fast","lc","lcm","np","high"] or preset2 not in ["fast","lc","lcm","np","high"]:
-        raise ValueError("preset and preset2 must be 'fast','lc','lcm','np',or'high'")
+    if preset not in ["fast","lc","lcm","np","npm","high"] or preset2 not in ["fast","lc","lcm","np","npm","high"]:
+        raise ValueError("preset and preset2 must be 'fast','lc','lcm','np','npm',or'high'")
 
     parmas1={
         #block_step,bm_range, ps_num, ps_range
@@ -692,6 +710,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         "lc"  :[6,9,2,4],
         "lcm"  :[5,9,2,4],
         "np"  :[4,16,2,5],
+        "npm"  :[3,16,2,5],
         "high":[3,16,2,7],
     }
 
@@ -701,6 +720,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         "lc"  :[6,9,2,4],
         "lcm"  :[5,9,2,4],
         "np"  :[4,12,2,5],
+        "npm"  :[3,12,2,5],
         "high":[3,16,2,7],
     }
 
@@ -710,6 +730,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         "lc"  :[5,9,2,5],
         "lcm"  :[6,9,2,5],
         "np"  :[3,16,2,6],
+        "npm"  :[4,16,2,6],
         "high":[2,16,2,8],
     }
 
@@ -719,6 +740,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         "lc"  :[5,9,2,5],
         "lcm"  :[6,9,2,5],
         "np"  :[3,12,2,6],
+        "npm"  :[4,12,2,6],
         "high":[2,16,2,8],
     }
 
