@@ -4,7 +4,6 @@ from vapoursynth import core
 import havsfunc as haf
 import xvs
 import mvsfunc as mvf
-import finesharp
 import muvsfunc as muf
 from functools import partial
 from typing import Optional
@@ -202,6 +201,7 @@ def arop(src,left=0,right=0,top=0,bottom=0): #mostly useless experimental functi
 
 #padded finesharp, because finesharp like to mess up frames' edges
 def pfinesharp(src,crop=True,psize=4,**args):
+    import finesharp
     sharpen=lambda x: finesharp.sharpen(x,**args)
     return rpfilter(src,filter=sharpen,psize=psize,crop=crop)
 
