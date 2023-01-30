@@ -39,6 +39,7 @@ functions:
 - rescaleandtrytounfuckborders
 - isvse, isvspipe
 - fmvfps
+- hrife
 '''
 
 #denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
@@ -667,6 +668,18 @@ def fmvfps(src,num=60,den=1,blend=True):
     mv=core.mv.Analyse(sup,isb=True,truemotion=False,levels=1)[0]*_fn
     mv2=core.mv.Analyse(sup,truemotion=False,levels=1)[0]*_fn
     return core.mv.BlockFPS(src,sup,mv,mv2,num,den,mode=0,blend=blend)
+
+#it's a helper
+def hrife(src,ref=None,mode=None,m='709',format=vs.YUV420P16,rgbh=True):
+    from math import ceil
+    if ref is None:
+        ref=src
+    s_w,s_h=ref.width,ref.height
+    p_w,p_h=ceil(s_w/32)*32,ceil(s_h/32)*32
+    if mode=='i' or src.format.color_family==vs.YUV:
+        return src.resize.Bicubic(p_w,p_h,src_width=p_w,src_height=p_h,format=[vs.RGBS,vs.RGBH][rgbh],matrix_in_s=m)
+    elif mode=='o' or src.format.color_family==vs.RGB:
+        return src.resize.Bicubic(s_w,s_h,src_width=s_w,src_height=s_h,format=format,matrix_s=m)
 
 
 ########################################################
