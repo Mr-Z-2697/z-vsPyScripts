@@ -21,7 +21,7 @@ Nnrs=nnrs
 '''
 functions:
 - pqdenoise
-- zmde
+- zmdg (zmde)
 - xdbcas
 - arop
 - pfinesharp (rpfilter (rpclip))
@@ -108,7 +108,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     return output
 
 #a simple mdegrain wrapper function that's enough for my own use
-def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,**args):
+def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=8,rmoverlap=None,rmpel=1,rmchromamv=True,rmtruemotion=False,rmthsad=100,**args):
     if thsadc==None:
         thsadc=thsad
     last=src
@@ -120,20 +120,33 @@ def zmde(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
         pref=last
     if overlap==None:
         overlap=blksize//2
+    if rmoverlap==None:
+        rmoverlap=rmblksize//2
     
     sup=core.mv.Super(pref,hpad=blksize,vpad=blksize,sharp=sharp,rfilter=rfilter,pel=pel)
     sup2=core.mv.Super(last,hpad=blksize,vpad=blksize,sharp=sharp,levels=1,pel=pel)
+    if isinstance(refinemotion,vs.VideoNode):
+        sup3=refinemotion
+    else:
+        sup3=core.mv.Super(last,hpad=rmblksize,vpad=rmblksize,sharp=sharp,levels=1,pel=rmpel)
 
     mvfw,mvbw=[],[]
     for i in range(1,tr+1):
-        mvfw.append(core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv))
-        mvbw.append(core.mv.Analyse(sup,isb=True,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv))
+        _fw=core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
+        _bw=core.mv.Analyse(sup,isb=True,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
+        if refinemotion:
+            _fw=core.mv.Recalculate(sup3,_fw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
+            _bw=core.mv.Recalculate(sup3,_bw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
+        mvfw.append(_fw)
+        mvbw.append(_bw)
 
     mv_list_string=','.join([f'mvbw[{j}],mvfw[{j}]' for j in range(tr)])
     last=eval(f'core.mv.Degrain{tr}(last,sup2,{mv_list_string},thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2,**args)')
     if cs:
         last=rpfilter(last,src,filter=lambda x,y: haf.ContraSharpening(x,y,radius=csrad,rep=csrep,planes=cspl),psize=4)
     return last
+#for backward compatibility
+zmde=zmdg
 
 #multi-pass f3kdb with optional contra-sharpening, masking and limit filter
 #idea stolen from xyx98
