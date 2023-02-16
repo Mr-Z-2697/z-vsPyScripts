@@ -361,6 +361,7 @@ def n3pv(*args,**kwargs):
     nsize=kwargs.get('nsize') if kwargs.get('nsize')!=None else 0
     qual=kwargs.get('qual') if kwargs.get('qual')!=None else 1
     mode=kwargs.get('mode') if kwargs.get('mode')!=None else nnrs_mode_default
+    int=kwargs.get('int') if kwargs.get('int')!=None else True
     last=list()
     if len(args)==1:
         if isinstance(args[0],list):
@@ -373,7 +374,7 @@ def n3pv(*args,**kwargs):
     else:
         for i in range(len(args)):
             last.append(Nnrs.nnedi3_resample(args[i],args[i].width*scale,args[i].height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode).sub.Subtitle('clip%d'%i))
-    return core.std.Interleave(last)
+    return core.std.Interleave(last) if int else last
 
 #quack quack, I'll take your grains
 #a dumb-ass func may be suitable for old movies with heavy dynamic grains
