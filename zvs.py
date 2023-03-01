@@ -629,6 +629,7 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
     return core.std.ModifyFrame(src,cliplist,sel2)
 
 #rescale and try to unfuck border, target on highly specific situation
+#ALWAYS DO TESTS BEFORE USE!
 def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,kernel='bilinear',nns=3,nsize=3,qual=2,pscrn=1,show='result'):
     if src.format.bits_per_sample!=16:
         src=src.fmtc.bitdepth(bits=16)
@@ -698,6 +699,14 @@ def hrife(src,ref=None,mode=None,m='709',format=vs.YUV420P16,rgbh=True):
         return src.resize.Bicubic(p_w,p_h,src_width=p_w,src_height=p_h,format=[vs.RGBS,vs.RGBH][rgbh],matrix_in_s=m)
     elif mode=='o' or src.format.color_family==vs.RGB:
         return src.resize.Bicubic(s_w,s_h,src_width=s_w,src_height=s_h,format=format,matrix_s=m)
+
+#can be used in fmtc
+crgb2opp=[1/3,1/3,1/3,0,
+1/2,-1/2,0,0,
+1/4,1/4,-1/2,0]
+copp2rgb=[1,1,2/3,0,
+1,-1,2/3,0,
+1,0,-4/3,0]
 
 
 ########################################################
