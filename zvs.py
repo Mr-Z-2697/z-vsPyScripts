@@ -108,7 +108,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     return output
 
 #a simple mdegrain wrapper function that's enough for my own use
-def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=1,rmchromamv=True,rmtruemotion=False,rmthsad=None,**args):
+def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,**args):
     if thsadc==None:
         thsadc=thsad
     last=src
@@ -118,14 +118,13 @@ def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
         pref=core.resize.Bicubic(last,range_in_s='limited',range_s='full')
     else:
         pref=last
-    if overlap==None:
-        overlap=blksize//2
-    if rmblksize==None:
-        rmblksize=blksize//2
-    if rmoverlap==None:
-        rmoverlap=rmblksize//2
-    if rmthsad==None:
-        rmthsad=thsad//2
+    if overlap==None: overlap=blksize//2
+    if rmblksize==None: rmblksize=blksize//2
+    if rmoverlap==None: rmoverlap=rmblksize//2
+    if rmthsad==None: rmthsad=thsad//2
+    if rmpel==None: rmpel=pel
+    if rmchromamv==None: rmchromamv=chromamv
+    if rmtruemotion==None: rmtruemotion=truemotion
     
     sup=core.mv.Super(pref,hpad=blksize,vpad=blksize,sharp=sharp,rfilter=rfilter,pel=pel)
     sup2=core.mv.Super(last,hpad=blksize,vpad=blksize,sharp=sharp,levels=1,pel=pel)
