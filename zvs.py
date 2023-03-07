@@ -361,18 +361,36 @@ def n3pv(*args,**kwargs):
     qual=kwargs.get('qual') if kwargs.get('qual')!=None else 1
     mode=kwargs.get('mode') if kwargs.get('mode')!=None else nnrs_mode_default
     int=kwargs.get('int') if kwargs.get('int')!=None else True
+    depth=kwargs.get('depth') if kwargs.get('depth')!=None else 8
+    bypass=mode=='bypass'
+    csp=eval(f'vs.RGB{depth*3}')
     last=list()
     if len(args)==1:
         if isinstance(args[0],list):
             for clip in args[0]:
-                last.append(Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode))
+                if bypass:
+                    _tmpclp=core.resize.Bicubic(clip,clip.width*scale,clip.height*scale)
+                    _tmpclp=mvf.ToRGB(_tmpclp,depth=depth)
+                else:
+                    _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode)
+                last.append(_tmpclp)
         elif isinstance(args[0],vs.VideoNode):
-            last.append(Nnrs.nnedi3_resample(args[0],args[0].width*scale,args[0].height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode))
+            if bypass:
+                _tmpclp=core.resize.Bicubic(args[0],args[0].width*scale,args[0].height*scale)
+                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth)
+            else:
+                _tmpclp=Nnrs.nnedi3_resample(args[0],args[0].width*scale,args[0].height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode)
+            last.append(_tmpclp)
         else:
             raise TypeError('input for preview should be list or clip')
     else:
         for i in range(len(args)):
-            last.append(Nnrs.nnedi3_resample(args[i],args[i].width*scale,args[i].height*scale,csp=vs.RGB24,nns=nns,nsize=nsize,qual=qual,mode=mode).sub.Subtitle('clip%d'%i))
+            if bypass:
+                _tmpclp=core.resize.Bicubic(args[i],args[i].width*scale,args[i].height*scale)
+                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth).sub.Subtitle('clip%d'%i)
+            else:
+                _tmpclp=Nnrs.nnedi3_resample(args[i],args[i].width*scale,args[i].height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode).sub.Subtitle('clip%d'%i)
+            last.append(_tmpclp)
     return core.std.Interleave(last) if int else last
 
 #quack quack, I'll take your grains
