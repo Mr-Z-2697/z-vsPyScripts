@@ -155,7 +155,7 @@ zmde=zmdg
 #idea stolen from xyx98
 def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,2],rs=[0,0],bf=[True,True],dg=[False,False],opt=[-1,-1],mt=[True,True],da=[3,3],ktv=[False,False],od=[16,16],rar=[1,1],rag=[1,1],rpr=[1,1],rpg=[1,1],passes=2,neo=True,casstr=0.3,mask=True,limit=True,s16=True):
     last=db=src.fmtc.bitdepth(bits=16) if s16 else src
-    r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg=[[i]*999 if isinstance(i,int) else i+[i[-1]]*999 for i in (r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg)]
+    r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg=[[i]*passes if isinstance(i,int) else i+[i[-1]]*passes for i in (r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg)]
     
     # l1,l2,l3,l4,l5,l6=[len(i) for i in (r,y,cb,cr,gy,gc)]
     # if l1==l2==l3==l4==l5==l6:
@@ -171,6 +171,12 @@ def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,
 
     if isinstance(limit,bool) and limit:
         db=mvf.LimitFilter(db,last,thr=0.1,thrc=0.05,elast=20,planes=[0,1,2])
+    elif isinstance(limit,(list,tuple)):
+        limit=[i for i in limit if isinstance(i,(int,float))]
+        if len(limit)==3:
+            db=mvf.LimitFilter(db,last,thr=limit[0],thrc=limit[1],elast=limit[2],planes=[0,1,2])
+        else:
+            raise ValueError
     elif callable(limit):
         db=limit(db,last)
     else:
