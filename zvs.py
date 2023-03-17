@@ -1,4 +1,4 @@
-__version__=str(1679013312/2**31)
+__version__=str(1679015242/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -426,9 +426,9 @@ def quack(src,median=None,knl={},md1={},bm1={},md2={},bm2={}):
         n=m
     else:
         n=nlm(last,rclip=m,**_knl)
-    last=zmde(last,pref=n,**_md1)
+    last=zmdg(last,pref=n,**_md1)
     last=bm3d(last,iref=src,**_bm1)
-    last=zmde(src,pref=last,**_md2)
+    last=zmdg(src,pref=last,**_md2)
     last=bm3d(last,iref=src,**_bm2)
     return last
 
