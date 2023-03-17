@@ -1,4 +1,4 @@
-__version__=str(1679030583/2**31)
+__version__=str(1679032614/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -109,7 +109,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     return output
 
 #a simple mdegrain wrapper function that's enough for my own use
-def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,**args):
+def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,mvout=False,mvin=None,**args):
     if thsadc==None:
         thsadc=thsad
     last=src
@@ -135,16 +135,25 @@ def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
         sup3=core.mv.Super(last,hpad=rmblksize,vpad=rmblksize,sharp=sharp,levels=1,pel=rmpel)
 
     mvfw,mvbw=[],[]
-    for i in range(1,tr+1):
-        _fw=core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
-        _bw=core.mv.Analyse(sup,isb=True,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
-        if refinemotion:
-            _fw=core.mv.Recalculate(sup3,_fw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
-            _bw=core.mv.Recalculate(sup3,_bw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
-        mvfw.append(_fw)
-        mvbw.append(_bw)
+    if isinstance(mvin,dict):
+        mvfw=mvin['mvfw']
+        mvbw=mvin['mvbw']
+        tr=mvin['tr']
+        mv_list_string=mvin['mvlist']
+    else:
+        for i in range(1,tr+1):
+            _fw=core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
+            _bw=core.mv.Analyse(sup,isb=True,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
+            if refinemotion:
+                _fw=core.mv.Recalculate(sup3,_fw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
+                _bw=core.mv.Recalculate(sup3,_bw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
+            mvfw.append(_fw)
+            mvbw.append(_bw)
+        mv_list_string=','.join([f'mvbw[{j}],mvfw[{j}]' for j in range(tr)])
 
-    mv_list_string=','.join([f'mvbw[{j}],mvfw[{j}]' for j in range(tr)])
+    if mvout:
+        return {'mvfw':mvfw,'mvbw':mvbw,'tr':tr,'mvlist':mv_list_string}
+
     last=eval(f'core.mv.Degrain{tr}(last,sup2,{mv_list_string},thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2,**args)')
     if cs:
         last=rpfilter(last,src,filter=lambda x,y: haf.ContraSharpening(x,y,radius=csrad,rep=csrep,planes=cspl),psize=4)
