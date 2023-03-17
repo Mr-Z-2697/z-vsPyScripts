@@ -1,4 +1,4 @@
-__version__=str(1679015242/2**31)
+__version__=str(1679030583/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -401,7 +401,7 @@ def n3pv(*args,**kwargs):
 
 #quack quack, I'll take your grains
 #a dumb-ass func may be suitable for old movies with heavy dynamic grains
-def quack(src,median=None,knl={},md1={},bm1={},md2={},bm2={}):
+def quack(src,bilateral=False,median=None,knl={},md1={},bm1={},md2={},bm2={}):
     _knl={'amd':False,'a':1,'s':2,'d':3,'h':2}
     _md1={'thsad':250,'thscd1':250,'limit':768,'tr':3}
     _bm1={'sigma':[2,2,2],'radius':1}
@@ -409,6 +409,8 @@ def quack(src,median=None,knl={},md1={},bm1={},md2={},bm2={}):
     _bm2={'sigma':[1,1,1],'radius':1}
     if median is None:
         median=knl!=False
+    if bilateral is None:
+        if knl!=False:bilateral='cpu'
     if not knl==False:
         _knl.update(knl)
     _md1.update(md1)
@@ -418,7 +420,9 @@ def quack(src,median=None,knl={},md1={},bm1={},md2={},bm2={}):
     if src.format.bits_per_sample!=16:
         src=src.fmtc.bitdepth(bits=16)
     last=src
-    if median:
+    if bilateral:
+        m=last.bilateralgpu.Bilateral() if bilateral=='gpu' else last.bilateral.Bilateral(planes=[0,1,2])
+    elif median:
         m=last.std.Median()
     else:
         m=src
