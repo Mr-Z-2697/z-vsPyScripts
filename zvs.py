@@ -1,3 +1,4 @@
+__version__=str(1679013312/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -273,7 +274,7 @@ def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matr
 def knl4a(src,*args,**kwargs):
     return nlm(src,*args,**kwargs,amd=True,mode='ocl')
 def nlm(src,planes=[1,1,1],rclip=None,h=1.2,amd=False,mode='ocl',**args):
-    NLM={'ocl':core.knlm.KNLMeansCL,'cuda':core.nlm_cuda.NLMeans}[mode]
+    NLM={'ocl':core.knlm.KNLMeansCL,'cuda':core.nlm_cuda.NLMeans}[mode] if not amd else core.knlm.KNLMeansCL
     if isinstance(h,list):
         if len(h)>=3:
             pass
@@ -285,8 +286,7 @@ def nlm(src,planes=[1,1,1],rclip=None,h=1.2,amd=False,mode='ocl',**args):
         h=[h,h,h]
 
     if not amd and planes==[1,1,1] and h[1]==h[2]:
-        if mode=='ocl':
-            return src.knlm.KNLMeansCL(rclip=rclip,h=h[0],channels='Y',**args).knlm.KNLMeansCL(rclip=rclip,h=h[1],channels='UV',**args)
+        return NLM(NLM(src,rclip=rclip,h=h[0],channels='Y',**args),rclip=rclip,h=h[1],channels='UV',**args)
 
     y,u,v=xvs.extractPlanes(src)
     if amd:
