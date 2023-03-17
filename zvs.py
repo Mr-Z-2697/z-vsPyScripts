@@ -1,4 +1,4 @@
-__version__=str(1679032614/2**31)
+__version__=str(1679083974/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -138,8 +138,8 @@ def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
     if isinstance(mvin,dict):
         mvfw=mvin['mvfw']
         mvbw=mvin['mvbw']
-        tr=mvin['tr']
-        mv_list_string=mvin['mvlist']
+        if tr>mvin['tr']:raise ValueError
+        # mv_list_string=mvin['mvlist']
     else:
         for i in range(1,tr+1):
             _fw=core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
@@ -149,8 +149,8 @@ def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
                 _bw=core.mv.Recalculate(sup3,_bw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
             mvfw.append(_fw)
             mvbw.append(_bw)
-        mv_list_string=','.join([f'mvbw[{j}],mvfw[{j}]' for j in range(tr)])
 
+    mv_list_string=','.join([f'mvbw[{j}],mvfw[{j}]' for j in range(tr)])
     if mvout:
         return {'mvfw':mvfw,'mvbw':mvbw,'tr':tr,'mvlist':mv_list_string}
 
