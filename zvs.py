@@ -1,4 +1,4 @@
-__version__=str(1679083974/2**31)
+__version__=str(1679114514/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -109,7 +109,16 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     return output
 
 #a simple mdegrain wrapper function that's enough for my own use
-def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,mvout=False,mvin=None,**args):
+'''
+cs: go
+no I'm joking
+cs: call haf.ContraSharpening after degrain
+mvout: output a dict of mvs ready for "mvin"
+mvin: take a dict of mvs, use them to degrain
+mvinrm: apply recalculate on mvs from "mvin"
+mvupd: only with "mvinrm", decide whether to modify the input dict
+'''
+def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,mvout=False,mvin=None,mvinrm=False,mvupd=None,**args):
     if thsadc==None:
         thsadc=thsad
     last=src
@@ -126,6 +135,7 @@ def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
     if rmpel==None: rmpel=pel
     if rmchromamv==None: rmchromamv=chromamv
     if rmtruemotion==None: rmtruemotion=truemotion
+    if mvupd==None: mvupd=mvinrm
     
     sup=core.mv.Super(pref,hpad=blksize,vpad=blksize,sharp=sharp,rfilter=rfilter,pel=pel)
     sup2=core.mv.Super(last,hpad=blksize,vpad=blksize,sharp=sharp,levels=1,pel=pel)
@@ -136,10 +146,21 @@ def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
 
     mvfw,mvbw=[],[]
     if isinstance(mvin,dict):
-        mvfw=mvin['mvfw']
-        mvbw=mvin['mvbw']
+        _mvfw=mvin['mvfw']
+        _mvbw=mvin['mvbw']
         if tr>mvin['tr']:raise ValueError
-        # mv_list_string=mvin['mvlist']
+        if mvinrm:
+            for i in range(tr):
+                _fw=core.mv.Recalculate(sup3,_mvfw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
+                _bw=core.mv.Recalculate(sup3,_mvbw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
+                mvfw.append(_fw)
+                mvbw.append(_bw)
+                if mvupd:
+                    _mvfw[i]=_fw
+                    _mvbw[i]=_bw
+        else:
+            mvfw=_mvfw
+            mvbw=_mvbw
     else:
         for i in range(1,tr+1):
             _fw=core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
