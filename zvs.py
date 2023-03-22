@@ -1,4 +1,4 @@
-__version__=str(1679114514/2**31)
+__version__=str(1679502605/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -44,7 +44,7 @@ functions:
 '''
 
 #denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
-def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp=bm3d_mode_default,vt=0,mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,truemotion=False,nl=100,contrasharp=1,to709=1,show='output',limit=255,limitc=None,sigma2=None,radius2=None):
+def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp=bm3d_mode_default,vt=0,mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,truemotion=False,nl=100,contrasharp=1,to709=1,show='output',limit=None,limitc=None,sigma2=None,radius2=None,lf=None):
     if lumaonly:
         chromamv=False
         chromaclip=src
@@ -54,7 +54,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
     denoised=sdr=core.resize.Bicubic(src,transfer_in=16,transfer=1,nominal_luminance=nl) if to709 else src
     if mdegrain:
         limitc=limitc if limitc else limit
-        denoised=zmde(denoised,tr=tr,thsad=thsad,thsadc=thsadc,blksize=blksize,overlap=overlap,pel=pel,thscd1=thscd1,thscd2=thscd2,truemotion=truemotion,chromamv=chromamv,limit=limit,limitc=limitc)
+        denoised=zmde(denoised,tr=tr,thsad=thsad,thsadc=thsadc,blksize=blksize,overlap=overlap,pel=pel,thscd1=thscd1,thscd2=thscd2,truemotion=truemotion,chromamv=chromamv,limit=limit,limitc=limitc,lf=lf)
         if show=='mde':
             return denoised
 
@@ -118,7 +118,7 @@ mvin: take a dict of mvs, use them to degrain
 mvinrm: apply recalculate on mvs from "mvin"
 mvupd: only with "mvinrm", decide whether to modify the input dict
 '''
-def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,mvout=False,mvin=None,mvinrm=False,mvupd=None,**args):
+def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,mvout=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
     if thsadc==None:
         thsadc=thsad
     last=src
@@ -176,6 +176,8 @@ def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=T
         return {'mvfw':mvfw,'mvbw':mvbw,'tr':tr,'mvlist':mv_list_string}
 
     last=eval(f'core.mv.Degrain{tr}(last,sup2,{mv_list_string},thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2,**args)')
+    if callable(lf):
+        last=lf(last,src)
     if cs:
         last=rpfilter(last,src,filter=lambda x,y: haf.ContraSharpening(x,y,radius=csrad,rep=csrep,planes=cspl),psize=4)
     return last
