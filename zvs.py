@@ -1,4 +1,4 @@
-__version__=str(1679502605/2**31)
+__version__=str(1679502929/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -117,6 +117,7 @@ mvout: output a dict of mvs ready for "mvin"
 mvin: take a dict of mvs, use them to degrain
 mvinrm: apply recalculate on mvs from "mvin"
 mvupd: only with "mvinrm", decide whether to modify the input dict
+lf: provide your own func for limit (does not override the "limit" arg of mdegrain) ie: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20)
 '''
 def zmdg(src,tr=2,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,mvout=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
     if thsadc==None:
