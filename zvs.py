@@ -1,4 +1,4 @@
-__version__=str(1679548073/2**31)
+__version__=str(1679548348/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -52,6 +52,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
 
     src=src.fmtc.bitdepth(bits=16)
     denoised=sdr=core.resize.Bicubic(src,transfer_in=16,transfer=1,nominal_luminance=nl) if to709 else src
+    pref=core.resize.Bicubic(pref,transfer_in=16,transfer=1,nominal_luminance=nl) if to709 else pref
     if mdegrain:
         limitc=limitc if limitc else limit
         denoised=zmde(denoised,tr=tr,thsad=thsad,thsadc=thsadc,blksize=blksize,overlap=overlap,pel=pel,thscd1=thscd1,thscd2=thscd2,truemotion=truemotion,chromamv=chromamv,limit=limit,limitc=limitc,lf=lf,refinemotion=refinemotion,rmblksize=rmblksize,rmoverlap=rmoverlap,rmpel=rmpel,rmchromamv=rmchromamv,rmtruemotion=rmtruemotion,rmthsad=rmthsad,pref=pref)
