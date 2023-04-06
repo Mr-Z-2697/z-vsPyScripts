@@ -1,4 +1,4 @@
-__version__=str(1679548348/2**31)
+__version__=str(1680798205/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -400,38 +400,42 @@ def n3pv(*args,**kwargs):
     nsize=kwargs.get('nsize') if kwargs.get('nsize')!=None else 0
     qual=kwargs.get('qual') if kwargs.get('qual')!=None else 1
     mode=kwargs.get('mode') if kwargs.get('mode')!=None else nnrs_mode_default
-    int=kwargs.get('int') if kwargs.get('int')!=None else True
+    int_=kwargs.get('int') if kwargs.get('int')!=None else True
     depth=kwargs.get('depth') if kwargs.get('depth')!=None else 8
+    mats=kwargs.get('mats')
     bypass=mode=='bypass'
     csp=eval(f'vs.RGB{depth*3}')
     last=list()
     if len(args)==1:
         if isinstance(args[0],list):
-            for clip in args[0]:
+            
+            for i,clip in enumerate(args[0]):
                 if bypass:
                     _tmpclp=core.resize.Bicubic(clip,clip.width*scale,clip.height*scale)
-                    _tmpclp=mvf.ToRGB(_tmpclp,depth=depth)
+                    _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i])
                 else:
-                    _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode)
+                    _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i])
                 last.append(_tmpclp)
         elif isinstance(args[0],vs.VideoNode):
+            mats=mats[0] if not isinstance(mats,(str,int)) else mats
             if bypass:
                 _tmpclp=core.resize.Bicubic(args[0],args[0].width*scale,args[0].height*scale)
-                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth)
+                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats)
             else:
-                _tmpclp=Nnrs.nnedi3_resample(args[0],args[0].width*scale,args[0].height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode)
+                _tmpclp=Nnrs.nnedi3_resample(args[0],args[0].width*scale,args[0].height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats)
             last.append(_tmpclp)
         else:
             raise TypeError('input for preview should be list or clip')
     else:
-        for i in range(len(args)):
+        mats=[mats]*len(args) if not isinstance(mats,(list,tuple)) else mats
+        for i,clip in enumerate(args):
             if bypass:
-                _tmpclp=core.resize.Bicubic(args[i],args[i].width*scale,args[i].height*scale)
-                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth).sub.Subtitle('clip%d'%i)
+                _tmpclp=core.resize.Bicubic(clip,clip.width*scale,clip.height*scale)
+                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i]).sub.Subtitle('clip%d'%i)
             else:
-                _tmpclp=Nnrs.nnedi3_resample(args[i],args[i].width*scale,args[i].height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode).sub.Subtitle('clip%d'%i)
+                _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i]).sub.Subtitle('clip%d'%i)
             last.append(_tmpclp)
-    return core.std.Interleave(last) if int else last
+    return core.std.Interleave(last) if int_ else last
 
 #quack quack, I'll take your grains
 #a dumb-ass func may be suitable for old movies with heavy dynamic grains
