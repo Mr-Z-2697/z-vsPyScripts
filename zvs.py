@@ -1,4 +1,4 @@
-__version__=str(1680935870/2**31)
+__version__=str(1680987790/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -12,6 +12,8 @@ import nnedi3_resample as nnrs
 
 try:
     from zvs_defaults import *
+    nnrs_mode_default
+    bm3d_mode_default
 except:
     nnrs_mode_default='nnedi3'
     bm3d_mode_default='cpu'
