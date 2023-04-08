@@ -1,4 +1,4 @@
-__version__=str(1680896451/2**31)
+__version__=str(1680935870/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -408,7 +408,7 @@ def n3pv(*args,**kwargs):
     last=list()
     if len(args)==1:
         if isinstance(args[0],list):
-            
+            mats=[mats]*len(args[0]) if not isinstance(mats,(list,tuple)) else mats
             for i,clip in enumerate(args[0]):
                 if bypass:
                     _tmpclp=core.resize.Bicubic(clip,clip.width*scale,clip.height*scale)
