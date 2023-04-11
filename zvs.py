@@ -1,4 +1,4 @@
-__version__=str(1681175736/2**31)
+__version__=str(1681218630/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -651,10 +651,13 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
     luma=xvs.getY(src)
     def sel1(n,f):
         fout=f[0].copy()
-        if valuemode=='avg':
-            fout.props.frac=f[0].props.PlaneStatsAverage/f[1].props.PlaneStatsAverage
-        elif valuemode=='max':
-            fout.props.frac=f[0].props.PlaneStatsMax/f[1].props.PlaneStatsMax
+        try:
+            if valuemode=='avg':
+                fout.props.frac=f[0].props.PlaneStatsAverage/f[1].props.PlaneStatsAverage
+            elif valuemode=='max':
+                fout.props.frac=f[0].props.PlaneStatsMax/f[1].props.PlaneStatsMax
+        except ZeroDivisionError:
+            fout.props.frac=1
         return fout
     letters=' '
     if left:
