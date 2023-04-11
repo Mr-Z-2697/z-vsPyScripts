@@ -1,4 +1,4 @@
-__version__=str(1680987790/2**31)
+__version__=str(1681173885/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -731,9 +731,9 @@ def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,ker
     luma_rescale=core.std.MaskedMerge(luma_rescale,luma_fixedge,miss_mask)
 
     mask=core.std.Expr([luma,luma_up],"x y - abs").std.Binarize(mask_dif_pix*256)
-    mask=mopf(mask)
     b=4
     mask=core.std.Crop(mask,b,b,b,b).std.AddBorders(b,b,b,b,color=0)
+    mask=mopf(mask)
     if show=='mask': return mask
 
     luma_rescale=core.std.MaskedMerge(luma_rescale,luma,mask)
