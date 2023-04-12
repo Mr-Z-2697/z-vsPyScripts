@@ -1,4 +1,4 @@
-__version__=str(1681272544/2**31)
+__version__=str(1681275070/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -705,12 +705,14 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
 
 #rescale and try to unfuck border, target on highly specific situation
 #ALWAYS DO TESTS BEFORE USE!
-def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,kernel='bilinear',nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=0.5,offsl2=0.5,post_kernel='bicubic'):
-    if src.format.bits_per_sample!=16:
-        src=src.fmtc.bitdepth(bits=16)
+def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,kernel='bilinear',nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=0.5,offsl2=0.5,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64):
+    if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
-    if mopf==None:
-        mopf=lambda x: xvs.inpand(xvs.expand(x,cycle=2),cycle=2)
+    if nns2==None:nns2=nns
+    if nsize2==None:nsize2=nsize
+    if qual2==None:qual2=qual
+    if pscrn2==None:pscrn2=pscrn
+    if mopf==None:mopf=lambda x:xvs.inpand(xvs.expand(x,cycle=2),cycle=2)
 
     luma=xvs.getY(last)
 
@@ -719,13 +721,17 @@ def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,ker
     luma_up=eval(f'core.resize.{kernel.capitalize()}(luma_de,1920,1080,src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16,dmode=1)')
     ###
     post_kernel=eval(f'core.resize.{post_kernel.capitalize()}')
+    blk=core.std.BlankClip(luma_de,color=0)
+    bmask=bordermask(blk,*[rim]*4,32)
     luma_de1=luma_de.std.Crop(right=1,bottom=1).std.AddBorders(left=1,top=1,color=0)
     luma_de2=luma_de2.std.Crop(left=1,top=1).std.AddBorders(right=1,bottom=1,color=0)
-    luma_rescale1=Nnrs.nnedi3_dh(luma_de1,mode=nnrs_mode_default,nns=nns,nsize=nsize,qual=qual,pscrn=pscrn,field=0).std.Transpose()
-    luma_rescale1=Nnrs.nnedi3_dh(luma_rescale1,mode=nnrs_mode_default,nns=nns,nsize=nsize,qual=qual,pscrn=pscrn,field=0).std.Transpose()
+    luma_de1=core.std.MaskedMerge(blk,luma_de1,bmask)
+    luma_de2=core.std.MaskedMerge(blk,luma_de2,bmask)
+    luma_rescale1=Nnrs.nnedi3_dh(luma_de1,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=0).std.Transpose()
+    luma_rescale1=Nnrs.nnedi3_dh(luma_rescale1,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=0).std.Transpose()
     luma_rescale1=post_kernel(luma_rescale1,1920,1080)
-    luma_rescale2=Nnrs.nnedi3_dh(luma_de2,mode=nnrs_mode_default,nns=nns,nsize=nsize,qual=qual,pscrn=pscrn,field=1).std.Transpose()
-    luma_rescale2=Nnrs.nnedi3_dh(luma_rescale2,mode=nnrs_mode_default,nns=nns,nsize=nsize,qual=qual,pscrn=pscrn,field=1).std.Transpose()
+    luma_rescale2=Nnrs.nnedi3_dh(luma_de2,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=1).std.Transpose()
+    luma_rescale2=Nnrs.nnedi3_dh(luma_rescale2,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=1).std.Transpose()
     luma_rescale2=post_kernel(luma_rescale2,1920,1080)
     luma_rescale1=post_kernel(luma_rescale1,src_left=offsl2,src_top=offst2,src_width=1920,src_height=1080)
     luma_rescale2=post_kernel(luma_rescale2,src_left=-offsl2,src_top=-offst2,src_width=1920,src_height=1080)
