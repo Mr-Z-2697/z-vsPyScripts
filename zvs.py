@@ -1,4 +1,4 @@
-__version__=str(1681220515/2**31)
+__version__=str(1681272544/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -733,7 +733,7 @@ def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,ker
 
     miss_mask=core.akarin.Expr(luma,"X 1915 > Y 4 < and X 4 < Y 1075 > and or  65535 0 ?")
     ###
-    luma_rescale=Nnrs.nnedi3_resample(luma_de,1920,1080,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-1,src_left=-1).fmtc.bitdepth(bits=16)
+    luma_rescale=Nnrs.nnedi3_resample(luma_de,1920,1080,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16)
     luma_rescale=core.std.MaskedMerge(luma_rescale,luma_edge,bordermask(luma,4,4,4,4))
 
     luma_fixedge=core.edgefixer.Continuity(luma,left=1,right=1,top=1,bottom=1,radius=3)
