@@ -1,4 +1,4 @@
-__version__=str(1681275070/2**31)
+__version__=str(1681289505/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1269,7 +1269,8 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
     mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
-
+    if mode=='eval':
+        return core.std.ModifyFrame(clipo,[diff,clipo],calc)
     if sigmoid:
         descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
     elif linear:
