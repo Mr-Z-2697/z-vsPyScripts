@@ -1,4 +1,4 @@
-__version__=str(1681289505/2**31)
+__version__=str(1681805813/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -705,7 +705,7 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
 
 #rescale and try to unfuck border, target on highly specific situation
 #ALWAYS DO TESTS BEFORE USE!
-def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,kernel='bilinear',nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=0.5,offsl2=0.5,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64):
+def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,taps=3,nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=0.5,offsl2=0.5,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,rc=3):
     if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
     if nns2==None:nns2=nns
@@ -715,10 +715,14 @@ def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,ker
     if mopf==None:mopf=lambda x:xvs.inpand(xvs.expand(x,cycle=2),cycle=2)
 
     luma=xvs.getY(last)
+    luma32=luma.fmtc.bitdepth(bits=32)
 
-    luma_de=eval(f'core.descale.De{kernel.lower()}(luma.fmtc.bitdepth(bits=32),{w},{h},src_top=-offst1,src_left=-offsl1)')
-    luma_de2=eval(f'core.descale.De{kernel.lower()}(luma.fmtc.bitdepth(bits=32),{w},{h},src_top=offst1,src_left=offsl1)')
-    luma_up=eval(f'core.resize.{kernel.capitalize()}(luma_de,1920,1080,src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16,dmode=1)')
+    # luma_de=eval(f'core.descale.De{kernel.lower()}(luma.fmtc.bitdepth(bits=32),{w},{h},src_top=-offst1,src_left=-offsl1)')
+    # luma_de2=eval(f'core.descale.De{kernel.lower()}(luma.fmtc.bitdepth(bits=32),{w},{h},src_top=offst1,src_left=offsl1)')
+    luma_de=core.descale.Descale(luma32,w,h,kernel=kernel,b=b,c=c,taps=taps,src_top=-offst1,src_left=-offsl1)
+    luma_de2=core.descale.Descale(luma32,w,h,kernel=kernel,b=b,c=c,taps=taps,src_top=offst1,src_left=offsl1)
+    resize_params=f'filter_param_a={b},filter_param_b={c},'if kernel=='bicubic'else f'filter_param_a={taps},'if kernel=='lanczos'else''
+    luma_up=eval(f'core.resize.{kernel.capitalize()}(luma_de,1920,1080,{resize_params}src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16,dmode=1)')
     ###
     post_kernel=eval(f'core.resize.{post_kernel.capitalize()}')
     blk=core.std.BlankClip(luma_de,color=0)
@@ -740,14 +744,13 @@ def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,ker
     miss_mask=core.akarin.Expr(luma,"X 1915 > Y 4 < and X 4 < Y 1075 > and or  65535 0 ?")
     ###
     luma_rescale=Nnrs.nnedi3_resample(luma_de,1920,1080,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16)
-    luma_rescale=core.std.MaskedMerge(luma_rescale,luma_edge,bordermask(luma,4,4,4,4))
+    luma_rescale=core.std.MaskedMerge(luma_rescale,luma_edge,bordermask(luma,*[border]*4))
 
-    luma_fixedge=core.edgefixer.Continuity(luma,left=1,right=1,top=1,bottom=1,radius=3)
+    luma_fixedge=core.edgefixer.Continuity(luma,left=1,right=1,top=1,bottom=1,radius=rc)
     luma_rescale=core.std.MaskedMerge(luma_rescale,luma_fixedge,miss_mask)
 
     mask=core.std.Expr([luma,luma_up],"x y - abs").std.Binarize(mask_dif_pix*256)
-    b=4
-    mask=core.std.Crop(mask,b,b,b,b).std.AddBorders(b,b,b,b,color=0)
+    mask=core.std.Crop(mask,*[border]*4).std.AddBorders(*[border]*4,color=0)
     mask=mopf(mask)
     if show=='mask': return mask
 
@@ -771,10 +774,10 @@ def fmvfps(src,num=60,den=1,blend=True):
     return core.mv.BlockFPS(src,sup,mv,mv2,num,den,mode=0,blend=blend)
 
 #it's a helper
-def hrife(src,ref=None,mode=None,m='709',format=vs.YUV420P16,rgbh=True):
+def hrife(src,ref=None,mode=None,m='709',format=None,rgbh=True):
     from math import ceil
-    if ref is None:
-        ref=src
+    if ref is None:ref=src
+    if format is None:format=ref.format
     s_w,s_h=ref.width,ref.height
     p_w,p_h=ceil(s_w/32)*32,ceil(s_h/32)*32
     if mode=='i' or src.format.color_family==vs.YUV:
