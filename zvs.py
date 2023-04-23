@@ -1,4 +1,4 @@
-__version__=str(1682272990/2**31)
+__version__=str(1682273637/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -491,8 +491,8 @@ def bilateraluv(src,ch='uv',mode='down',method='spline36',oldbehavior=False,clc=
         targetw=src.width
         targeth=src.height
     elif mode.lower()=='down':
-        targetw=src.width / (2**src.format.subsampling_w)
-        targeth=src.height / (2**src.format.subsampling_h)
+        targetw=src.width>>src.format.subsampling_w
+        targeth=src.height>>src.format.subsampling_h
     else:
         raise ValueError('mode not supported')
 
