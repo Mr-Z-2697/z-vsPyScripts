@@ -1,4 +1,4 @@
-__version__=str(1682217452/2**31)
+__version__=str(1682272990/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -43,7 +43,7 @@ functions:
 - isvse, isvspipe
 - fmvfps
 - hrife
-- down444keepuv
+- go444keepuv
 '''
 
 #denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
@@ -485,8 +485,8 @@ def quack(src,bilateral=False,median=None,knl={},md1={},bm1={},md2={},bm2={}):
 #use y channel or opponent chroma channel as reference to repair uv channels with bilateral
 #tbilateral is much trickier to use, the "ref" doesn't even mean the same thing, just add it for testing
 #parameters you should really care about are ones in first line
-def bilateraluv(src,ch='uv',mode='down',method='spline36',S=1,R=0.02,lumaref=True,crossref=False,\
-    algo=0,P=None,T=False,diameter=3,sdev=0.5,idev=0.01,cs=1,d2=True,kerns=1,kerni=1,restype=0,**args):
+def bilateraluv(src,ch='uv',mode='down',method='spline36',oldbehavior=False,clc=True,left=True,top=True,S=1,R=0.02,lumaref=True,crossref=False,\
+    algo=0,P=None,T=False,diameter=3,sdev=0.5,idev=0.01,cs=1,d2=True,kerns=1,kerni=1,restype=0,**kwargs):
     if mode.lower()=='up':
         targetw=src.width
         targeth=src.height
@@ -498,13 +498,12 @@ def bilateraluv(src,ch='uv',mode='down',method='spline36',S=1,R=0.02,lumaref=Tru
 
     if lumaref:
         if method.lower()=='nnrs':
-            last=Nnrs.nnedi3_resample(src,targetw,targeth,csp=vs.YUV444P16)
+            resizer=lambda x,w,h,l,t,**args:Nnrs.nnedi3_resample(x,w,h,src_left=l,src_top=t,**args)
         elif method.lower() in ['point','bilinear','bicubic','lanczos','spline16','spline36','spline64']:
-            resizers={'point':core.resize.Point,'bilinear':core.resize.Bilinear,'bicubic':core.resize.Bicubic,'lanczos':core.resize.Lanczos,'spline16':core.resize.Spline16,'spline36':core.resize.Spline36,'spline64':core.resize.Spline64}
-            resizer=resizers[method.lower()]
-            last=resizer(src,targetw,targeth,format=vs.YUV444P16,**args)
+            resizer=eval(f'lambda x,w,h,l,t,**args:core.resize.{method.capitalize()}(x,w,h,src_left=l,src_top=t,**args)')
         else:
             raise ValueError('resize method not supported')
+        last=go444keepuv(src,dir=mode,clc=clc,left=left,top=top,resampler=partial(resizer,**kwargs)) if not oldbehavior else resizer(src,targetw,targeth,0,0,format=vs.YUV444P16,**kwargs)
     else:
         last=src
 
@@ -795,14 +794,21 @@ copp2rgb=[1,1,2/3,0,
 1,0,-4/3,0]
 
 
-def down444keepuv(src,clc=True,left=True,top=False,resampler=None):
+def go444keepuv(src,dir='down',clc=True,left=True,top=False,resampler=None):
     sw,sh=src.width,src.height
     ssw,ssh=src.format.subsampling_w,src.format.subsampling_h
     tw,th=sw>>ssw,sh>>ssh
     if resampler is None:resampler=lambda x,w,h,l,t:core.resize.Spline36(x,w,h,src_left=l,src_top=t)
-    luma=xvs.getY(src)
-    luma=resampler(luma,tw,th,0,0) if not clc else resampler(luma,tw,th,-ssw/2 if left else 0,-ssh/2 if top else 0)
-    return core.std.ShufflePlanes([luma,src],[0,1,2],vs.YUV)
+    if dir.lower()=='down':
+        luma=xvs.getY(src)
+        luma=resampler(luma,tw,th,0,0) if not clc else resampler(luma,tw,th,-ssw/2 if left else 0,-ssh/2 if top else 0)
+        return core.std.ShufflePlanes([luma,src],[0,1,2],vs.YUV)
+    elif dir.lower()=='up':
+        luma,u,v=xvs.extractPlanes(src)
+        u=resampler(u,sw,sh,0,0)
+        v=resampler(v,sw,sh,0,0)
+        if clc:luma=resampler(luma,sw,sh,-ssw/2 if left else 0,-ssh/2 if top else 0)
+        return core.std.ShufflePlanes([luma,u,v],[0,0,0],vs.YUV)
 
 
 ########################################################
