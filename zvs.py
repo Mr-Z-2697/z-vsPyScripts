@@ -1,4 +1,4 @@
-__version__=str(1681805813/2**31)
+__version__=str(1682217452/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -43,6 +43,7 @@ functions:
 - isvse, isvspipe
 - fmvfps
 - hrife
+- down444keepuv
 '''
 
 #denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
@@ -792,6 +793,16 @@ crgb2opp=[1/3,1/3,1/3,0,
 copp2rgb=[1,1,2/3,0,
 1,-1,2/3,0,
 1,0,-4/3,0]
+
+
+def down444keepuv(src,clc=True,left=True,top=False,resampler=None):
+    sw,sh=src.width,src.height
+    ssw,ssh=src.format.subsampling_w,src.format.subsampling_h
+    tw,th=sw>>ssw,sh>>ssh
+    if resampler is None:resampler=lambda x,w,h,l,t:core.resize.Spline36(x,w,h,src_left=l,src_top=t)
+    luma=xvs.getY(src)
+    luma=resampler(luma,tw,th,0,0) if not clc else resampler(luma,tw,th,-ssw/2 if left else 0,-ssh/2 if top else 0)
+    return core.std.ShufflePlanes([luma,src],[0,1,2],vs.YUV)
 
 
 ########################################################
