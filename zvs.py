@@ -1,4 +1,4 @@
-__version__=str(1682273637/2**31)
+__version__=str(1682547911/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -245,13 +245,13 @@ def arop(src,left=0,right=0,top=0,bottom=0): #mostly useless experimental functi
         return core.std.Crop(src,left=left,right=right,top=top,bottom=bottom)
     else:
         l,r=[i if not i%subsw else 0 for i in (left,right)]
-        t,b=[i if not i%subsw else 0 for i in (top,bottom)]
+        t,b=[i if not i%subsh else 0 for i in (top,bottom)]
 
         last=core.std.Crop(src,left=l,right=r,top=t,bottom=b) if not(l==r==t==b==0) else src
         y,u,v=xvs.extractPlanes(last)
 
         l,r=[i if i%subsw else 0 for i in (left,right)]
-        t,b=[i if i%subsw else 0 for i in (top,bottom)]
+        t,b=[i if i%subsh else 0 for i in (top,bottom)]
 
         y=core.std.Crop(y,left=l,right=r,top=t,bottom=b)
         w=(src.width-left-right)//subsw
