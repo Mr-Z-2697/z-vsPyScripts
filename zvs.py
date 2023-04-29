@@ -1,4 +1,4 @@
-__version__=str(1682547911/2**31)
+__version__=str(1682796509/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -14,9 +14,11 @@ try:
     from zvs_defaults import *
     nnrs_mode_default
     bm3d_mode_default
+    bm3d_extractor_exp_default
 except:
     nnrs_mode_default='nnedi3'
     bm3d_mode_default='cpu'
+    bm3d_extractor_exp_default=0
 
 nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode=nnrs_mode_default,nns=3,nsize=3,qual=2,pscrn=1)
 Nnrs=nnrs
@@ -825,7 +827,7 @@ def go444keepuv(src,dir='down',clc=True,left=True,top=False,resampler=None):
 def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,mode=bm3d_mode_default,radius=0,radius2=None,chroma=False,fast=True,
             block_step1=None,bm_range1=None, ps_num1=None, ps_range1=None,
             block_step2=None,bm_range2=None, ps_num2=None, ps_range2=None,
-            extractor_exp=0,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",
+            extractor_exp=bm3d_extractor_exp_default,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",
             refine=1,dmode=0,iterates=False,keepfloat=False,vt=0):
     bits=clip.format.bits_per_sample
     clip=core.fmtc.bitdepth(clip,bits=32)
@@ -937,7 +939,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         return core.fmtc.bitdepth(flt,bits=bits,dmode=dmode)
 
 #copy-paste from xyx98's xvs
-def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=0,ps_num=2,ps_range=4,chroma=False,fast=True,extractor_exp=0,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",vt=0):
+def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=0,ps_num=2,ps_range=4,chroma=False,fast=True,extractor_exp=bm3d_extractor_exp_default,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",vt=0):
     if mode not in ["cpu","cuda","cuda_rtc"]:
         raise ValueError("mode must be cpu,or cuda,or cuda_rtc")
     elif mode=="cpu":
