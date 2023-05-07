@@ -1,4 +1,4 @@
-__version__=str(1682796509/2**31)
+__version__=str(1683468850/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -228,7 +228,10 @@ def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,
         pass
     
     if mask:
-        dbmask=xvs.mwdbmask(last)
+        if isinstance(mask,vs.VideoNode):
+            dbmask=mask
+        else:
+            dbmask=xvs.mwdbmask(last)
         db=core.std.MaskedMerge(db,last,dbmask)
 
     if casstr==0:
