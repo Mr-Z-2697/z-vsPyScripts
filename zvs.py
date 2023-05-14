@@ -1,4 +1,4 @@
-__version__=str(1683468850/2**31)
+__version__=str(1684085214/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -48,7 +48,7 @@ functions:
 - go444keepuv
 '''
 
-#denoise pq hdr content by partially convert it to bt709 then take the difference back to pq, may yield a better result
+#denoise pq hdr content by partially convert it to bt709, do denoise in bt709 then take the difference back to pq, may yield a better result
 def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp=bm3d_mode_default,vt=0,mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,truemotion=False,nl=100,contrasharp=1,to709=1,show='output',limit=None,limitc=None,sigma2=None,radius2=None,lf=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,pref=None):
     if lumaonly:
         chromamv=False
