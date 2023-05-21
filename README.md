@@ -7,13 +7,13 @@ Z's weird vapoursynth python script(s)
 
 ### python packages
 [mvsfunc](https://github.com/HomeOfVapourSynthEvolution/mvsfunc)  
-[vsutil](https://github.com/Irrational-Encoding-Wizardry/vsutil)  
+~[vsutil](https://github.com/Irrational-Encoding-Wizardry/vsutil)~ this was actually required by havsfunc  
 numpy(optional)  
 opencv-python(optional)  
 PyWavelets(optional)  
 
 ### python scripts
-~[havsfunc](https://github.com/HomeOfVapourSynthEvolution/havsfunc), preferably [7f0a9a7](https://github.com/HomeOfVapourSynthEvolution/havsfunc/tree/7f0a9a7a37b60a05b9f408024d203e511e544a61)~ oh wait, i didn't really use it other than Contrasharpening in the script... so...  
+~[havsfunc](https://github.com/HomeOfVapourSynthEvolution/havsfunc), preferably [7f0a9a7](https://github.com/HomeOfVapourSynthEvolution/havsfunc/tree/7f0a9a7a37b60a05b9f408024d203e511e544a61)~ oh wait, i didn't really use it other than ContraSharpening in the script... so...  
 [muvsfunc](https://github.com/WolframRhodium/muvsfunc)  
 [nnedi3_resample](https://github.com/HomeOfVapourSynthEvolution/nnedi3_resample)  
 [xvs](https://github.com/xyx98/my-vapoursynth-script)  
