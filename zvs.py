@@ -1,13 +1,12 @@
-__version__=str(1684085214/2**31)
+__version__=str(1684648603/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
-import havsfunc as haf
 import xvs
 import mvsfunc as mvf
 import muvsfunc as muf
 from functools import partial
-from typing import Optional
+from typing import Any, Mapping, Optional, Sequence, Union
 import nnedi3_resample as nnrs
 
 try:
@@ -65,7 +64,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
             return denoised
 
         if contrasharp>=2 or (contrasharp==1 and bm3dtyp=='no'):
-            denoised=haf.ContraSharpening(denoised,sdr)
+            denoised=ContraSharpening(denoised,sdr)
         if show=='mdecs':
             return denoised
     
@@ -101,7 +100,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
             return denoised
 
     if contrasharp>=1:
-        denoised=haf.ContraSharpening(denoised,sdr)
+        denoised=ContraSharpening(denoised,sdr)
     if show=='bm3dcs':
         return denoised
 
@@ -118,7 +117,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
 '''
 cs: go
 no I'm joking
-cs: call haf.ContraSharpening after degrain
+cs: call ContraSharpening after degrain
 mvout: output a dict of mvs ready for "mvin"
 mvin: take a dict of mvs, use them to degrain
 mvinrm: apply recalculate on mvs from "mvin"
@@ -191,7 +190,7 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromam
     if callable(lf):
         last=lf(last,src)
     if cs:
-        last=rpfilter(last,src,filter=lambda x,y: haf.ContraSharpening(x,y,radius=csrad,rep=csrep,planes=cspl),psize=4)
+        last=rpfilter(last,src,filter=lambda x,y: ContraSharpening(x,y,radius=csrad,rep=csrep,planes=cspl),psize=4)
     return last
 #for backward compatibility
 zmde=zmdg
@@ -1319,3 +1318,141 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix
         rescale=core.std.MaskedMerge(rescale,clipo,mask)
 
     return core.std.ModifyFrame(rescale,[diff,rescale],calc)
+
+
+def ContraSharpening(
+    denoised: vs.VideoNode, original: vs.VideoNode, radius: int = 1, rep: int = 1, planes: Optional[Union[int, Sequence[int]]] = None
+) -> vs.VideoNode:
+    '''
+    contra-sharpening: sharpen the denoised clip, but don't add more to any pixel than what was removed previously.
+
+    Parameters:
+        denoised: Denoised clip to sharpen.
+
+        original: Original clip before denoising.
+
+        radius: Spatial radius for contra-sharpening.
+
+        rep: Mode of repair to limit the difference.
+
+        planes: Specifies which planes will be processed. Any unprocessed planes will be simply copied.
+            By default only luma plane will be processed for non-RGB formats.
+    '''
+    if not (isinstance(denoised, vs.VideoNode) and isinstance(original, vs.VideoNode)):
+        raise vs.Error('ContraSharpening: this is not a clip')
+
+    if denoised.format.id != original.format.id:
+        raise vs.Error('ContraSharpening: clips must have the same format')
+
+    neutral = 1 << (denoised.format.bits_per_sample - 1)
+
+    plane_range = range(denoised.format.num_planes)
+
+    if planes is None:
+        planes = [0] if denoised.format.color_family != vs.RGB else [0, 1, 2]
+    elif isinstance(planes, int):
+        planes = [planes]
+
+    pad = 2 if radius < 3 else 4
+    denoised = rpclip(denoised, pad)
+    original = rpclip(original, pad)
+
+    matrix1 = [1, 2, 1, 2, 4, 2, 1, 2, 1]
+    matrix2 = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+    # damp down remaining spots of the denoised clip
+    s = MinBlur(denoised, radius, planes)
+    # the difference achieved by the denoising
+    allD = core.std.MakeDiff(original, denoised, planes=planes)
+
+    RG11 = s.std.Convolution(matrix=matrix1, planes=planes)
+    if radius >= 2:
+        RG11 = RG11.std.Convolution(matrix=matrix2, planes=planes)
+    if radius >= 3:
+        RG11 = RG11.std.Convolution(matrix=matrix2, planes=planes)
+
+    # the difference of a simple kernel blur
+    ssD = core.std.MakeDiff(s, RG11, planes=planes)
+    # limit the difference to the max of what the denoising removed locally
+    ssDD = core.rgvs.Repair(ssD, allD, mode=[rep if i in planes else 0 for i in plane_range])
+    # abs(diff) after limiting may not be bigger than before
+    ssDD = core.std.Expr([ssDD, ssD], expr=[f'x {neutral} - abs y {neutral} - abs < x y ?' if i in planes else '' for i in plane_range])
+    # apply the limited difference (sharpening is just inverse blurring)
+    last = core.std.MergeDiff(denoised, ssDD, planes=planes)
+    return last.std.Crop(pad, pad, pad, pad)
+
+
+def MinBlur(clp: vs.VideoNode, r: int = 1, planes: Optional[Union[int, Sequence[int]]] = None) -> vs.VideoNode:
+    '''Nifty Gauss/Median combination'''
+    from mvsfunc import LimitFilter
+
+    if not isinstance(clp, vs.VideoNode):
+        raise vs.Error('MinBlur: this is not a clip')
+
+    plane_range = range(clp.format.num_planes)
+
+    if planes is None:
+        planes = list(plane_range)
+    elif isinstance(planes, int):
+        planes = [planes]
+
+    matrix1 = [1, 2, 1, 2, 4, 2, 1, 2, 1]
+    matrix2 = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+    if r <= 0:
+        RG11 = sbr(clp, planes=planes)
+        RG4 = clp.std.Median(planes=planes)
+    elif r == 1:
+        RG11 = clp.std.Convolution(matrix=matrix1, planes=planes)
+        RG4 = clp.std.Median(planes=planes)
+    elif r == 2:
+        RG11 = clp.std.Convolution(matrix=matrix1, planes=planes).std.Convolution(matrix=matrix2, planes=planes)
+        RG4 = clp.ctmf.CTMF(radius=2, planes=planes)
+    else:
+        RG11 = clp.std.Convolution(matrix=matrix1, planes=planes).std.Convolution(matrix=matrix2, planes=planes).std.Convolution(matrix=matrix2, planes=planes)
+        if clp.format.bits_per_sample == 16:
+            s16 = clp
+            RG4 = core.fmtc.bitdepth(clp, bits=12, dmode=1).ctmf.CTMF(radius=3, planes=planes)
+            RG4 = LimitFilter(s16, core.fmtc.bitdepth(RG4, bits=16), thr=0.0625, elast=2, planes=planes)
+        else:
+            RG4 = clp.ctmf.CTMF(radius=3, planes=planes)
+
+    return core.std.Expr([clp, RG11, RG4], expr=['x y - x z - * 0 < x x y - abs x z - abs < y z ? ?' if i in planes else '' for i in plane_range])
+
+
+def sbr(c: vs.VideoNode, r: int = 1, planes: Optional[Union[int, Sequence[int]]] = None) -> vs.VideoNode:
+    '''make a highpass on a blur's difference (well, kind of that)'''
+    if not isinstance(c, vs.VideoNode):
+        raise vs.Error('sbr: this is not a clip')
+
+    neutral = 1 << (c.format.bits_per_sample - 1) if c.format.sample_type == vs.INTEGER else 0.0
+
+    plane_range = range(c.format.num_planes)
+
+    if planes is None:
+        planes = list(plane_range)
+    elif isinstance(planes, int):
+        planes = [planes]
+
+    matrix1 = [1, 2, 1, 2, 4, 2, 1, 2, 1]
+    matrix2 = [1, 1, 1, 1, 1, 1, 1, 1, 1]
+
+    RG11 = c.std.Convolution(matrix=matrix1, planes=planes)
+    if r >= 2:
+        RG11 = RG11.std.Convolution(matrix=matrix2, planes=planes)
+    if r >= 3:
+        RG11 = RG11.std.Convolution(matrix=matrix2, planes=planes)
+
+    RG11D = core.std.MakeDiff(c, RG11, planes=planes)
+
+    RG11DS = RG11D.std.Convolution(matrix=matrix1, planes=planes)
+    if r >= 2:
+        RG11DS = RG11DS.std.Convolution(matrix=matrix2, planes=planes)
+    if r >= 3:
+        RG11DS = RG11DS.std.Convolution(matrix=matrix2, planes=planes)
+
+    RG11DD = core.std.Expr(
+        [RG11D, RG11DS],
+        expr=[f'x y - x {neutral} - * 0 < {neutral} x y - abs x {neutral} - abs < x y - {neutral} + x ? ?' if i in planes else '' for i in plane_range],
+    )
+    return core.std.MakeDiff(c, RG11DD, planes=planes)
