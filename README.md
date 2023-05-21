@@ -27,3 +27,12 @@ PyWavelets(optional)
 [KNLMeansCL](https://github.com/AmusementClub/KNLMeansCL)  
 [mvtools](https://github.com/dubhater/vapoursynth-mvtools) (for degrain4-6 and some speed up use [my build](https://github.com/Mr-Z-2697/vapoursynth-mvtools/releases) before they make new release)  
 [nlm-cuda](https://github.com/AmusementClub/vs-nlm-cuda)  
+f3kdb/neo_f3kdb  
+bilateral  
+tcanny  
+nnedi3cl/znedi3/nnedi3  
+vs-removegrain  
+descale  
+akarin  
+edgefixer  
+cas  
