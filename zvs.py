@@ -1,4 +1,4 @@
-__version__=str(1684648603/2**31)
+__version__=str(1684858590/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -502,7 +502,7 @@ def bilateraluv(src,ch='uv',mode='down',method='spline36',oldbehavior=False,clc=
 
     if lumaref:
         if method.lower()=='nnrs':
-            resizer=lambda x,w,h,l,t,**args:Nnrs.nnedi3_resample(x,w,h,src_left=l,src_top=t,**args)
+            resizer=lambda x,w,h,l,t,**args:Nnrs.nnedi3_resample(x,w,h,src_left=l,src_top=t,csp=args.pop('format') if oldbehavior else None,**args)
         elif method.lower() in ['point','bilinear','bicubic','lanczos','spline16','spline36','spline64']:
             resizer=eval(f'lambda x,w,h,l,t,**args:core.resize.{method.capitalize()}(x,w,h,src_left=l,src_top=t,**args)')
         else:
