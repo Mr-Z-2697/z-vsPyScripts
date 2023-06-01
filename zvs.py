@@ -1,4 +1,4 @@
-__version__=str(1684911244/2**31)
+__version__=str(1685638062/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -124,7 +124,7 @@ mvinrm: apply recalculate on mvs from "mvin"
 mvupd: only with "mvinrm", decide whether to modify the input dict
 lf: provide your own func for limit (does not override the "limit" arg of mdegrain) ie: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20)
 '''
-def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,mvout=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
+def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=0,mvout=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
     if thsadc==None:
         thsadc=thsad
     last=src
@@ -162,8 +162,8 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromam
         if tr>mvin['tr']:raise ValueError
         if mvinrm:
             for i in range(tr):
-                _fw=core.mv.Recalculate(sup3,_mvfw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
-                _bw=core.mv.Recalculate(sup3,_mvbw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
+                _fw=core.mv.Recalculate(sup3,_mvfw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct)
+                _bw=core.mv.Recalculate(sup3,_mvbw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct)
                 mvfw.append(_fw)
                 mvbw.append(_bw)
                 if mvupd:
@@ -174,11 +174,11 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromam
             mvbw=_mvbw
     else:
         for i in range(1,tr+1):
-            _fw=core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
-            _bw=core.mv.Analyse(sup,isb=True,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv)
+            _fw=core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv,dct=dct)
+            _bw=core.mv.Analyse(sup,isb=True,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv,dct=dct)
             if refinemotion:
-                _fw=core.mv.Recalculate(sup3,_fw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
-                _bw=core.mv.Recalculate(sup3,_bw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv)
+                _fw=core.mv.Recalculate(sup3,_fw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct)
+                _bw=core.mv.Recalculate(sup3,_bw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct)
             mvfw.append(_fw)
             mvbw.append(_bw)
 
