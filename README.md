@@ -11,7 +11,7 @@ NOT necessary but you can define default values as you like.
 ```
 from vsenv import *
 core.num_threads=nn
-core.max_cache_size=xxx #change these values can work inside vsenv.py but like if you preview in vsedit it only works for first time so not very well...
+core.max_cache_size=xxx #change these values can work inside vsenv.py but like if you preview in vsedit it only works for first time so not very well... but other than that i think it's viable
 ```
 \*cringe\*
 
