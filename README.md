@@ -15,7 +15,7 @@ core.max_cache_size=xxx #change these values can work inside vsenv.py but like i
 ```
 \*cringe\*
 
-## Requirements
+## Requirements (for zvs)
 
 ### python packages
 [mvsfunc](https://github.com/HomeOfVapourSynthEvolution/mvsfunc)  
