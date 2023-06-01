@@ -1,9 +1,21 @@
 # z-vsPyScripts
 Z's weird vapoursynth python script(s)
 
+## Usage
+### zvs
 `import zvs`
+### zvs_defaults
+NOT necessary but you can define default values as you like.
+### vsenv
+\*cringe\*
+```
+from vsenv import *
+core.num_threads=nn
+core.max_cache_size=xxx #change these values can work inside vsenv.py but like if you preview in vsedit it only works for first time so not very well...
+```
+\*cringe\*
 
-# Requirements
+## Requirements
 
 ### python packages
 [mvsfunc](https://github.com/HomeOfVapourSynthEvolution/mvsfunc)  
