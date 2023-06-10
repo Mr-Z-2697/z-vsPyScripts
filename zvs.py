@@ -119,7 +119,7 @@ cs: go
 no I'm joking
 cs: call ContraSharpening after degrain
 mvout: output a dict of mvs ready for "mvin"
-mvout_sup: output super clips as well
+mvout_sup: output super clips as well, benefit is small and may cause unintended behavior, not recommended
 mvin: take a dict of mvs, use them to degrain, if super clips present, they will be used too
 mvinrm: apply recalculate on mvs from "mvin"
 mvupd: only with "mvinrm", decide whether to modify the input dict
