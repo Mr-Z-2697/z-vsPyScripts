@@ -1,4 +1,4 @@
-__version__=str(1686404362/2**31)
+__version__=str(1686404801/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -151,22 +151,21 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromam
     if rmdct==None: rmdct=dct
     if mvupd==None: mvupd=mvinrm
     
+    sup,sup2,sup3=0,0,0
     if mvd_in:
         supin=mvin.get('sup')
         if supin!=None:
             sup,sup2=supin[0],supin[1]
             if refinemotion and len(supin)==3:
                 sup3=supin[2]
-            else:
-                sup3=core.mv.Super(last,hpad=rmblksize,vpad=rmblksize,sharp=sharp,levels=1,pel=rmpel)
-    else:
-        sup=core.mv.Super(pref,hpad=blksize,vpad=blksize,sharp=sharp,rfilter=rfilter,pel=pel)
-        sup2=core.mv.Super(last,hpad=blksize,vpad=blksize,sharp=sharp,levels=1,pel=pel)
-        if refinemotion:
-            if isinstance(refinemotion,vs.VideoNode): #i can't remember why i did this really, but it's harmless just leave it
-                sup3=refinemotion
-            else:
-                sup3=core.mv.Super(last,hpad=rmblksize,vpad=rmblksize,sharp=sharp,levels=1,pel=rmpel)
+
+    sup=core.mv.Super(pref,hpad=blksize,vpad=blksize,sharp=sharp,rfilter=rfilter,pel=pel) if sup==0 else sup
+    sup2=core.mv.Super(last,hpad=blksize,vpad=blksize,sharp=sharp,levels=1,pel=pel) if sup2==0 else sup2
+    if refinemotion:
+        if isinstance(refinemotion,vs.VideoNode): #i can't remember why i did this really, but it's harmless just leave it
+            sup3=refinemotion
+        else:
+            sup3=core.mv.Super(last,hpad=rmblksize,vpad=rmblksize,sharp=sharp,levels=1,pel=rmpel) if sup3==0 else sup3
 
     mvfw,mvbw=[],[]
     if mvd_in:
