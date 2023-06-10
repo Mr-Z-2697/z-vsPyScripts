@@ -1,4 +1,4 @@
-__version__=str(1686302330/2**31)
+__version__=str(1686404362/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -119,12 +119,14 @@ cs: go
 no I'm joking
 cs: call ContraSharpening after degrain
 mvout: output a dict of mvs ready for "mvin"
-mvin: take a dict of mvs, use them to degrain
+mvout_sup: output super clips as well
+mvin: take a dict of mvs, use them to degrain, if super clips present, they will be used too
 mvinrm: apply recalculate on mvs from "mvin"
 mvupd: only with "mvinrm", decide whether to modify the input dict
 lf: provide your own func for limit (does not override the "limit" arg of mdegrain) ie: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20)
 '''
-def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
+def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
+    mvd_in=isinstance(mvin,dict)
     if thsadc==None:
         thsadc=thsad
     last=src
@@ -135,7 +137,7 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromam
     else:
         pref=last
     if tr==None:
-        if not isinstance(mvin,dict):
+        if not mvd_in:
             tr=2
         else:
             tr=mvin['tr']
@@ -149,16 +151,25 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromam
     if rmdct==None: rmdct=dct
     if mvupd==None: mvupd=mvinrm
     
-    sup=core.mv.Super(pref,hpad=blksize,vpad=blksize,sharp=sharp,rfilter=rfilter,pel=pel)
-    sup2=core.mv.Super(last,hpad=blksize,vpad=blksize,sharp=sharp,levels=1,pel=pel)
-    if refinemotion:
-        if isinstance(refinemotion,vs.VideoNode):
-            sup3=refinemotion
-        else:
-            sup3=core.mv.Super(last,hpad=rmblksize,vpad=rmblksize,sharp=sharp,levels=1,pel=rmpel)
+    if mvd_in:
+        supin=mvin.get('sup')
+        if supin!=None:
+            sup,sup2=supin[0],supin[1]
+            if refinemotion and len(supin)==3:
+                sup3=supin[2]
+            else:
+                sup3=core.mv.Super(last,hpad=rmblksize,vpad=rmblksize,sharp=sharp,levels=1,pel=rmpel)
+    else:
+        sup=core.mv.Super(pref,hpad=blksize,vpad=blksize,sharp=sharp,rfilter=rfilter,pel=pel)
+        sup2=core.mv.Super(last,hpad=blksize,vpad=blksize,sharp=sharp,levels=1,pel=pel)
+        if refinemotion:
+            if isinstance(refinemotion,vs.VideoNode): #i can't remember why i did this really, but it's harmless just leave it
+                sup3=refinemotion
+            else:
+                sup3=core.mv.Super(last,hpad=rmblksize,vpad=rmblksize,sharp=sharp,levels=1,pel=rmpel)
 
     mvfw,mvbw=[],[]
-    if isinstance(mvin,dict):
+    if mvd_in:
         _mvfw=mvin['mvfw']
         _mvbw=mvin['mvbw']
         if tr>mvin['tr']:raise ValueError
@@ -186,7 +197,10 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromam
 
     mv_list_string=','.join([f'mvbw[{j}],mvfw[{j}]' for j in range(tr)])
     if mvout:
-        return {'mvfw':mvfw,'mvbw':mvbw,'tr':tr,'mvlist':mv_list_string}
+        mvd={'mvfw':mvfw,'mvbw':mvbw,'tr':tr,'mvlist':mv_list_string}
+        if mvout_sup:
+            mvd['sup']=[sup,sup2,sup3] if refinemotion else [sup,sup2]
+        return mvd
 
     last=eval(f'core.mv.Degrain{tr}(last,sup2,{mv_list_string},thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2,**args)')
     if callable(lf):
