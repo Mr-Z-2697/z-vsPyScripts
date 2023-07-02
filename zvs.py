@@ -1,4 +1,4 @@
-__version__=str(1686931365/2**31)
+__version__=str(1688306076/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -123,7 +123,7 @@ mvout_sup: output super clips as well, benefit is small and may cause unintended
 mvin: take a dict of mvs, use them to degrain, if super clips present, they will be used too
 mvinrm: apply recalculate on mvs from "mvin"
 mvupd: only with "mvinrm", decide whether to modify the input dict
-lf: provide your own func for limit (does not override the "limit" arg of mdegrain) ie: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20)
+lf: provide your own func for limit (does not override the "limit" arg of mdegrain) eg: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20) or a number represents "thr" in mvf.LimitFilter
 '''
 def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
     mvd_in=isinstance(mvin,dict)
@@ -204,6 +204,8 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,overlap=None,pel=1,chromam
     last=eval(f'core.mv.Degrain{tr}(last,sup2,{mv_list_string},thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2,**args)')
     if callable(lf):
         last=lf(last,src)
+    elif isinstance(lf,(int,float)):
+        last=mvf.LimitFilter(last,src,thr=lf,elast=20)
     if cs:
         last=rpfilter(last,src,filter=lambda x,y: ContraSharpening(x,y,radius=csrad,rep=csrep,planes=cspl),psize=4)
     return last
@@ -291,6 +293,7 @@ def pfinesharp(src,crop=True,psize=4,**args):
     return rpfilter(src,filter=sharpen,psize=psize,crop=crop)
 
 #nnrs and ssim is for chroma upscaling and downscaling only
+#deprecated, 無駄無駄
 def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matrix='709',nnrs=False,ssim=False,ssim_smooth=False,ssim_sigmoid=True,nnrs_down=None,ort=False,model_f=None,model_p=None,overlap=None):
     if full==None:
         try:
@@ -417,8 +420,14 @@ def rpfilter(input,ref=None,other=None,filter=lambda x: x,psize=2,crop=True):
     return last
 
 #resize pad clip
-def rpclip(input,psize=2):
-    return core.resize.Bicubic(input,input.width+2*psize,input.height+2*psize,src_top=-psize,src_left=-psize,src_width=input.width+2*psize,src_height=input.height+2*psize)
+def rpclip(input,psize=2,left=None,right=None,top=None,bottom=None):
+    if left==None:left=psize
+    if right==None:right=psize
+    if top==None:top=psize
+    if bottom==None:bottom=psize
+    w=input.width+left+right
+    h=input.height+top+bottom
+    return core.resize.Bicubic(input,w,h,src_top=-top,src_left=-left,src_width=w,src_height=h)
 
 #nnedi3 preview
 def n3pv(*args,**kwargs):
@@ -805,6 +814,7 @@ def hrife(src,ref=None,mode=None,m='709',format=None,rgbh=True):
         return src.resize.Bicubic(s_w,s_h,src_width=s_w,src_height=s_h,format=format,matrix_s=m)
 
 #can be used in fmtc
+#pointless as we already have yuv (typically), I thought this is only meaningful when dealing with RGB like in the literature (for somewhat faster conversion than traditional matrix maybe) so the situation is like yuv (including opp) is better than RGB but which *reasonable* matrix you use is much less relevant, based on my solely observations though
 crgb2opp=[1/3,1/3,1/3,0,
 1/2,-1/2,0,0,
 1/4,1/4,-1/2,0]
