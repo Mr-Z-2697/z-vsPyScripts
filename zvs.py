@@ -1,5 +1,6 @@
-__version__=str(1688306076/2**31)
+__version__=str(1688465530/2**31)
 import os,sys
+from turtle import down
 import vapoursynth as vs
 from vapoursynth import core
 import xvs
@@ -733,14 +734,20 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
 
 #rescale and try to unfuck border, target on highly specific situation
 #ALWAYS DO TESTS BEFORE USE!
-def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,taps=3,nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=0.5,offsl2=0.5,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,rc=3):
+def rescaleandtrytounfuckborders(src,w=None,h=None,mopf=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,taps=3,nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,rc=3,custom_nnedi3down=False):
     if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
+    if w==None and h==None:raise ValueError
+    if w==None and isinstance(h,int):w=int(h*(src.width/src.height))
+    if isinstance(w,int) and h==None:h=int(w*(src.height/src.width))
     if nns2==None:nns2=nns
     if nsize2==None:nsize2=nsize
     if qual2==None:qual2=qual
     if pscrn2==None:pscrn2=pscrn
     if mopf==None:mopf=lambda x:xvs.inpand(xvs.expand(x,cycle=2),cycle=2)
+    post_kernel=eval(f'core.resize.{post_kernel.capitalize()}') if not callable(post_kernel) else post_kernel
+    down_kernel=(post_kernel if not callable(custom_nnedi3down) else custom_nnedi3down) if down_kernel==None else down_kernel
+    down_kernel=eval(f'core.resize.{down_kernel.capitalize()}') if not callable(down_kernel) else down_kernel
 
     luma=xvs.getY(last)
     luma32=luma.fmtc.bitdepth(bits=32)
@@ -752,7 +759,6 @@ def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,ker
     resize_params=f'filter_param_a={b},filter_param_b={c},'if kernel=='bicubic'else f'filter_param_a={taps},'if kernel=='lanczos'else''
     luma_up=eval(f'core.resize.{kernel.capitalize()}(luma_de,1920,1080,{resize_params}src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16,dmode=1)')
     ###
-    post_kernel=eval(f'core.resize.{post_kernel.capitalize()}')
     blk=core.std.BlankClip(luma_de,color=0)
     bmask=bordermask(blk,*[rim]*4,32)
     luma_de1=luma_de.std.Crop(right=1,bottom=1).std.AddBorders(left=1,top=1,color=0)
@@ -761,17 +767,21 @@ def rescaleandtrytounfuckborders(src,w=1280,h=720,mopf=None,mask_dif_pix=2.5,ker
     luma_de2=core.std.MaskedMerge(blk,luma_de2,bmask)
     luma_rescale1=Nnrs.nnedi3_dh(luma_de1,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=0).std.Transpose()
     luma_rescale1=Nnrs.nnedi3_dh(luma_rescale1,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=0).std.Transpose()
-    luma_rescale1=post_kernel(luma_rescale1,1920,1080)
+    luma_rescale1=down_kernel(luma_rescale1,1920,1080)
     luma_rescale2=Nnrs.nnedi3_dh(luma_de2,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=1).std.Transpose()
     luma_rescale2=Nnrs.nnedi3_dh(luma_rescale2,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=1).std.Transpose()
-    luma_rescale2=post_kernel(luma_rescale2,1920,1080)
+    luma_rescale2=down_kernel(luma_rescale2,1920,1080)
     luma_rescale1=post_kernel(luma_rescale1,src_left=offsl2,src_top=offst2,src_width=1920,src_height=1080)
     luma_rescale2=post_kernel(luma_rescale2,src_left=-offsl2,src_top=-offst2,src_width=1920,src_height=1080)
     luma_edge=core.std.MaskedMerge(luma_rescale1,luma_rescale2,bordermask(luma,t=4,l=4,d=32)).fmtc.bitdepth(bits=16)
 
     miss_mask=core.akarin.Expr(luma,"X 1915 > Y 4 < and X 4 < Y 1075 > and or  65535 0 ?")
     ###
-    luma_rescale=Nnrs.nnedi3_resample(luma_de,1920,1080,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16)
+    if callable(custom_nnedi3down):
+        luma_rescale=Nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1)
+        luma_rescale=custom_nnedi3down(luma_rescale).fmtc.bitdepth(bits=16)
+    else:
+        luma_rescale=Nnrs.nnedi3_resample(luma_de,1920,1080,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16)
     luma_rescale=core.std.MaskedMerge(luma_rescale,luma_edge,bordermask(luma,*[border]*4))
 
     luma_fixedge=core.edgefixer.Continuity(luma,left=1,right=1,top=1,bottom=1,radius=rc)
