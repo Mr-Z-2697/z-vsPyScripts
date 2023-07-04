@@ -1,6 +1,5 @@
 __version__=str(1688465530/2**31)
 import os,sys
-from turtle import down
 import vapoursynth as vs
 from vapoursynth import core
 import xvs
