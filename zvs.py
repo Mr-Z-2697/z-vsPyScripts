@@ -1,4 +1,4 @@
-__version__=str(1690169398/2**31)
+__version__=str(1690171460/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1295,7 +1295,7 @@ def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Opt
         return core.std.ShufflePlanes([last,clip],[0,1,2],vs.YUV)
 
 #copy-paste from xyx98's xvs with some modification
-def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix:float=2,postfilter_descaled=None,taps:int=3,b:float=0,c:float=0.5,multiple:float=1,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,custom_nnedi3down=False,**args):
+def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNode]=True,mask_dif_pix:float=2,postfilter_descaled=None,taps:int=3,b:float=0,c:float=0.5,multiple:float=1,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,custom_nnedi3down=False,show:str='result',**args):
     src_w,src_h=clip.width,clip.height
     clipo=clip
     if sigmoid:
@@ -1346,7 +1346,7 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix
     else:
         rescale=nnrs.nnedi3_resample(descaled,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
 
-    if mask:
+    if mask is True:
         if not isinstance(mask_gen_clip,vs.VideoNode):
             mclip=clip
             mclip_up=upscaled
@@ -1357,17 +1357,44 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: bool=True,mask_dif_pix
             mask=xvs.expand(mask,cycle=mthr[0])
             mask=xvs.inpand(mask,cycle=mthr[1])
         rescale=core.std.MaskedMerge(rescale,clipo,mask)
+    elif isinstance(mask,vs.VideoNode):
+        if mask.width!=src_w or mask.height!=src_h or mask.format.color_family!=vs.GRAY:
+            raise ValueError("mask should have same resolution as source,and should be GRAY")
+        mask=core.fmtc.bitdepth(mask,bits=16,dmode=1)
+        rescale=core.std.MaskedMerge(rescale,clip,mask)
+    else:
+        mask=core.std.BlankClip(rescale)
 
-    return core.std.ModifyFrame(rescale,[diff,rescale],calc)
+    if show.lower()=="result":
+        return core.std.ModifyFrame(rescale,[diff,rescale],calc)
+    elif show.lower()=="mask" and mask:
+        return core.std.ModifyFrame(mask,[diff,mask],calc)
+    elif show.lower()=="descale":
+        return descaled #after postfilter_descaled
+    elif show.lower()=="both": #result,mask,descaled
+        return core.std.ModifyFrame(rescale,[diff,rescale],calc),core.std.ModifyFrame(mask,[diff,mask],calc),descaled
 
-#copy-paste from xyx98's xvs
-def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask: Union[bool,vs.VideoNode]=True,mask_dif_pix:float=2,postfilter_descaled=None,mthr:list[int]=[2,2],taps:int=3,b:float=0,c:float=0.5,multiple:float=1,maskpp=None,show:str="result",**args):
+#copy-paste from xyx98's xvs with some modification
+def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask: Union[bool,vs.VideoNode]=True,mask_dif_pix:float=2,postfilter_descaled=None,mthr:list[int]=[2,2],taps:int=3,b:float=0,c:float=0.5,multiple:float=1,maskpp=None,show:str="result",mask_gen_clip=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,custom_nnedi3down=False,**args):
 
     src_w,src_h=clip.width,clip.height
-    cargs=cropping_args(src_w,src_h,h,bh,bw)
+    clipo=clip
+    if sigmoid:
+        clip=core.fmtc.transfer(clip,transs=tin,transd='sigmoid',fulls=fulls,fulld=fulld)
+    elif linear:
+        clip=core.fmtc.transfer(clip,transs=tin,transd='linear',fulls=fulls,fulld=fulld)
+    cargs=xvs.cropping_args(src_w,src_h,h,bh,bw)
     clip32=core.fmtc.bitdepth(clip,bits=32)
+    if isinstance(mask_gen_clip,vs.VideoNode):
+        clip32=core.std.Interleave([clip32,xvs.getY(mask_gen_clip).fmtc.bitdepth(bits=32)])
     descaled=core.descale.Descale(clip32,kernel=kernel.lower(),taps=taps,b=b,c=c,**cargs.descale_gen())
-    upscaled=resize_core(kernel.capitalize(),taps,b,c)(descaled,**cargs.resize_gen())
+    upscaled=xvs.resize_core(kernel.capitalize(),taps,b,c)(descaled,**cargs.resize_gen())
+    if isinstance(mask_gen_clip,vs.VideoNode):
+        mclip=xvs.getY(mask_gen_clip)
+        mclip_up=upscaled[1::2]
+        clip32=clip32[::2]
+        descaled=descaled[::2]
+        upscaled=upscaled[::2]
     diff=core.std.Expr([clip32,upscaled],"x y - abs dup 0.015 > swap 0 ?").std.Crop(10, 10, 10, 10).std.PlaneStats()
     def calc(n,f): 
         fout=f[1].copy()
@@ -1385,19 +1412,34 @@ def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask
     nns=args.get("nns")
     qual=2 if args.get("qual") is None else args.get("qual")
     etype=args.get("etype")
-    pscrn=args.get("pscrn")
+    pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
-    sigmoid=args.get("sigmoid")
+    mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
+    if mode=='eval':
+        return core.std.ModifyFrame(clipo,[diff,clipo],calc)
+    if sigmoid:
+        descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
+    elif linear:
+        descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
 
-    rescale=nnedi3_resample(descaled,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,sigmoid=sigmoid,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
+    if callable(custom_nnedi3down):
+        _cargs=cargs.nnrs_gen()
+        del _cargs['target_width'],_cargs['target_height']
+        rescale=nnrs.nnedi3_resample(descaled,descaled.width*2,descaled.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,**_cargs)
+        rescale=custom_nnedi3down(rescale,src_w,src_h).fmtc.bitdepth(bits=16)
+    else:
+        rescale=nnrs.nnedi3_resample(descaled,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
 
     if mask is True:
-        mask=core.std.Expr([clip,upscaled.fmtc.bitdepth(bits=16,dmode=1)],"x y - abs").std.Binarize(mask_dif_pix*256)
+        if not isinstance(mask_gen_clip,vs.VideoNode):
+            mclip=clip
+            mclip_up=upscaled
+        mask=core.std.Expr([mclip,mclip_up.fmtc.bitdepth(bits=16,dmode=1)],"x y - abs").std.Binarize(mask_dif_pix*256)
         if callable(maskpp):
             mask=maskpp(mask)
         else:
-            mask=expand(mask,cycle=mthr[0])
-            mask=inpand(mask,cycle=mthr[1])
+            mask=xvs.expand(mask,cycle=mthr[0])
+            mask=xvs.inpand(mask,cycle=mthr[1])
         rescale=core.std.MaskedMerge(rescale,clip,mask)
     elif isinstance(mask,vs.VideoNode):
         if mask.width!=src_w or mask.height!=src_h or mask.format.color_family!=vs.GRAY:
