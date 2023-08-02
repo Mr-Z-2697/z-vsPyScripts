@@ -1,4 +1,4 @@
-__version__=str(1690171460/2**31)
+__version__=str(1690971781/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -513,6 +513,7 @@ def quack(src,bilateral=False,median=None,knl={},md1={},bm1={},md2={},bm2={}):
 #use y channel or opponent chroma channel as reference to repair uv channels with bilateral
 #tbilateral is much trickier to use, the "ref" doesn't even mean the same thing, just add it for testing
 #parameters you should really care about are ones in first line
+#using KrigBilateral with vs-placebo may be better?
 def bilateraluv(src,ch='uv',mode='down',method='spline36',oldbehavior=False,clc=True,left=True,top=False,S=1,R=0.02,lumaref=True,crossref=False,\
     algo=0,P=None,T=False,diameter=3,sdev=0.5,idev=0.01,cs=1,d2=True,kerns=1,kerni=1,restype=0,**kwargs):
     if mode.lower()=='up':
@@ -736,6 +737,7 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
 def rescaleandtrytounfuckborders(src,w=None,h=None,mopf=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,taps=3,nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,rc=3,custom_nnedi3down=False):
     if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
+    isgray=last.format.color_family==vs.GRAY
     if w==None and h==None:raise ValueError
     if w==None and isinstance(h,int):w=int(h*(src.width/src.height))
     if isinstance(w,int) and h==None:h=int(w*(src.height/src.width))
@@ -748,7 +750,7 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mopf=None,mask_dif_pix=2.5,ke
     down_kernel=(post_kernel if not callable(custom_nnedi3down) else custom_nnedi3down) if down_kernel==None else down_kernel
     down_kernel=eval(f'core.resize.{down_kernel.capitalize()}') if not callable(down_kernel) else down_kernel
 
-    luma=xvs.getY(last)
+    luma=xvs.getY(last) if not isgray else last
     luma32=luma.fmtc.bitdepth(bits=32)
 
     # luma_de=eval(f'core.descale.De{kernel.lower()}(luma.fmtc.bitdepth(bits=32),{w},{h},src_top=-offst1,src_left=-offsl1)')
@@ -792,7 +794,7 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mopf=None,mask_dif_pix=2.5,ke
     if show=='mask': return mask
 
     luma_rescale=core.std.MaskedMerge(luma_rescale,luma,mask)
-    last=core.std.ShufflePlanes([luma_rescale,last],[0,1,2],vs.YUV)
+    last=core.std.ShufflePlanes([luma_rescale,last],[0,1,2],vs.YUV) if not isgray else luma_rescale
     return last
     
 #for no reason
@@ -892,6 +894,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         "np"  :[4,16,2,5],
         "npm"  :[3,16,2,5],
         "high":[3,16,2,7],
+        "highm":[2,16,2,7],
     }
 
     vparmas1={
@@ -902,6 +905,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         "np"  :[4,12,2,5],
         "npm"  :[3,12,2,5],
         "high":[3,16,2,7],
+        "highm":[2,16,2,7],
     }
 
     parmas2={
@@ -912,6 +916,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         "np"  :[3,16,2,6],
         "npm"  :[4,16,2,6],
         "high":[2,16,2,8],
+        "highm":[3,16,2,8],
     }
 
     vparmas2={
@@ -922,6 +927,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
         "np"  :[3,12,2,6],
         "npm"  :[4,12,2,6],
         "high":[2,16,2,8],
+        "highm":[3,16,2,8],
     }
 
 
