@@ -1,4 +1,4 @@
-__version__=str(1691914129/2**31)
+__version__=str(1692033216/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -453,7 +453,7 @@ def n3pv(*args,**kwargs):
                     _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i])
                 last.append(_tmpclp)
         elif isinstance(args[0],vs.VideoNode):
-            mats=mats[0] if not isinstance(mats,(str,int)) else mats
+            mats=mats[0] if isinstance(mats,(list,tuple)) else mats
             if bypass:
                 _tmpclp=core.resize.Bicubic(args[0],args[0].width*scale,args[0].height*scale)
                 _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats)
