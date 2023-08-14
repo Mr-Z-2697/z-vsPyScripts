@@ -1,4 +1,4 @@
-__version__=str(1692033216/2**31)
+__version__=str(1692033683/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -471,7 +471,7 @@ def n3pv(*args,**kwargs):
             else:
                 _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i]).sub.Subtitle('clip%d'%i)
             last.append(_tmpclp)
-    return core.std.Interleave(last) if int_ else last
+    return last[0] if len(last)==1 else core.std.Interleave(last) if int_ else last
 
 #quack quack, I'll take your grains
 #a dumb-ass func may be suitable for old movies with heavy dynamic grains
