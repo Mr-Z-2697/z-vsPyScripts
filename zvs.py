@@ -1,4 +1,4 @@
-__version__=str(1692033683/2**31)
+__version__=str(1692400913/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -439,37 +439,41 @@ def n3pv(*args,**kwargs):
     int_=kwargs.get('int') if kwargs.get('int')!=None else True
     depth=kwargs.get('depth') if kwargs.get('depth')!=None else 8
     mats=kwargs.get('mats')
+    fulls=kwargs.get('fulls')
     bypass=mode=='bypass'
     csp=eval(f'vs.RGB{depth*3}')
     last=list()
     if len(args)==1:
         if isinstance(args[0],list):
             mats=[mats]*len(args[0]) if not isinstance(mats,(list,tuple)) else mats
+            fulls=[fulls]*len(args[0]) if not isinstance(fulls,(list,tuple)) else fulls
             for i,clip in enumerate(args[0]):
                 if bypass:
                     _tmpclp=core.resize.Bicubic(clip,clip.width*scale,clip.height*scale)
-                    _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i])
+                    _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i],full=fulls[i])
                 else:
-                    _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i])
+                    _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i],fulls=fulls[i])
                 last.append(_tmpclp)
         elif isinstance(args[0],vs.VideoNode):
             mats=mats[0] if isinstance(mats,(list,tuple)) else mats
+            fulls=fulls[0] if isinstance(fulls,(list,tuple)) else fulls
             if bypass:
                 _tmpclp=core.resize.Bicubic(args[0],args[0].width*scale,args[0].height*scale)
-                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats)
+                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats,full=fulls)
             else:
-                _tmpclp=Nnrs.nnedi3_resample(args[0],args[0].width*scale,args[0].height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats)
+                _tmpclp=Nnrs.nnedi3_resample(args[0],args[0].width*scale,args[0].height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats,fulls=fulls)
             last.append(_tmpclp)
         else:
             raise TypeError('input for preview should be list or clip')
     else:
         mats=[mats]*len(args) if not isinstance(mats,(list,tuple)) else mats
+        fulls=[fulls]*len(args) if not isinstance(fulls,(list,tuple)) else fulls
         for i,clip in enumerate(args):
             if bypass:
                 _tmpclp=core.resize.Bicubic(clip,clip.width*scale,clip.height*scale)
-                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i]).sub.Subtitle('clip%d'%i)
+                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i],full=fulls[i]).sub.Subtitle('clip%d'%i)
             else:
-                _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i]).sub.Subtitle('clip%d'%i)
+                _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i],fulls=fulls[i]).sub.Subtitle('clip%d'%i)
             last.append(_tmpclp)
     return last[0] if len(last)==1 else core.std.Interleave(last) if int_ else last
 
@@ -737,10 +741,11 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
 def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,taps=3,nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
     if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
+    srcw,srch=src.width,src.height
     isgray=last.format.color_family==vs.GRAY
     if w==None and h==None:raise ValueError
-    if w==None and isinstance(h,int):w=int(h*(src.width/src.height))
-    if isinstance(w,int) and h==None:h=int(w*(src.height/src.width))
+    if w==None and isinstance(h,int):w=int(h*(srcw/srch))
+    if isinstance(w,int) and h==None:h=int(w*(srch/srcw))
     if nns2==None:nns2=nns
     if nsize2==None:nsize2=nsize
     if qual2==None:qual2=qual
@@ -767,7 +772,7 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_
     luma_de=core.descale.Descale(luma32,w,h,kernel=kernel,b=b,c=c,taps=taps,src_top=-offst1,src_left=-offsl1)
     luma_de2=core.descale.Descale(luma32,w,h,kernel=kernel,b=b,c=c,taps=taps,src_top=offst1,src_left=offsl1)
     resize_params=f'filter_param_a={b},filter_param_b={c},'if kernel=='bicubic'else f'filter_param_a={taps},'if kernel=='lanczos'else''
-    luma_up=eval(f'core.resize.{kernel.capitalize()}(luma_de,1920,1080,{resize_params}src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16,dmode=1)')
+    luma_up=eval(f'core.resize.{kernel.capitalize()}(luma_de,{srcw},{srch},{resize_params}src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16,dmode=1)')
     
     if isinstance(mask_gen_clip,vs.VideoNode):
         mclip=xvs.getY(mask_gen_clip)
@@ -795,21 +800,21 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_
 
     luma_rescale1=Nnrs.nnedi3_dh(luma_de1,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=0).std.Transpose()
     luma_rescale1=Nnrs.nnedi3_dh(luma_rescale1,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=0).std.Transpose()
-    luma_rescale1=down_kernel(luma_rescale1,1920,1080)
+    luma_rescale1=down_kernel(luma_rescale1,srcw,srch)
     luma_rescale2=Nnrs.nnedi3_dh(luma_de2,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=1).std.Transpose()
     luma_rescale2=Nnrs.nnedi3_dh(luma_rescale2,mode=nnrs_mode_default,nns=nns2,nsize=nsize2,qual=qual2,pscrn=pscrn2,field=1).std.Transpose()
-    luma_rescale2=down_kernel(luma_rescale2,1920,1080)
-    luma_rescale1=post_kernel(luma_rescale1,src_left=offsl2,src_top=offst2,src_width=1920,src_height=1080)
-    luma_rescale2=post_kernel(luma_rescale2,src_left=-offsl2,src_top=-offst2,src_width=1920,src_height=1080)
+    luma_rescale2=down_kernel(luma_rescale2,srcw,srch)
+    luma_rescale1=post_kernel(luma_rescale1,src_left=offsl2,src_top=offst2,src_width=srcw,src_height=srch)
+    luma_rescale2=post_kernel(luma_rescale2,src_left=-offsl2,src_top=-offst2,src_width=srcw,src_height=srch)
     luma_edge=core.std.MaskedMerge(luma_rescale1,luma_rescale2,bordermask(luma,t=border,l=border,d=32)).fmtc.bitdepth(bits=16)
 
-    miss_mask=core.akarin.Expr(luma,f"X {src.width-border-1} > Y {border} < and X {border} < Y {src.height-border-1} > and or  65535 0 ?")
+    miss_mask=core.akarin.Expr(luma,f"X {srcw-border-1} > Y {border} < and X {border} < Y {srch-border-1} > and or  65535 0 ?")
     ###
     if callable(custom_nnedi3down):
         luma_rescale=Nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1)
-        luma_rescale=custom_nnedi3down(luma_rescale).fmtc.bitdepth(bits=16)
+        luma_rescale=custom_nnedi3down(luma_rescale,srcw,srch).fmtc.bitdepth(bits=16)
     else:
-        luma_rescale=Nnrs.nnedi3_resample(luma_de,1920,1080,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16)
+        luma_rescale=Nnrs.nnedi3_resample(luma_de,srcw,srch,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16)
     luma_rescale=core.std.MaskedMerge(luma_rescale,luma_edge,bordermask(luma,*[border]*4))
 
     luma_fixedge=core.edgefixer.Continuity(luma,left=bc,right=bc,top=bc,bottom=bc,radius=rc)
