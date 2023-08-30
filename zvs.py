@@ -1,4 +1,4 @@
-__version__=str(1692400913/2**31)
+__version__=str(1693433214/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -45,6 +45,7 @@ functions:
 - fmvfps
 - hrife
 - go444keepuv
+- setrange, setmatrix, settransfer, setprimaries, setchromaloc, setparams
 '''
 
 #denoise pq hdr content by partially convert it to bt709, do denoise in bt709 then take the difference back to pq, may yield a better result
@@ -376,7 +377,7 @@ def nlm(src,planes=[1,1,1],rclip=None,h=1.2,amd=False,mode='ocl',**args):
     return core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
 
 #line mask?
-def wtfmask(src,nnrs=True,t_l=16,t_h=26,range='limited',op=[1],optc=1,bin=True,bthr=1,**args):
+def wtfmask(src,nnrs=True,t_l=16,t_h=26,range='full',op=[1],optc=1,bin=True,bthr=1,**args):
     if nnrs:
         last=Nnrs.nnedi3_resample(src,csp=vs.RGBS)
     else:
@@ -888,6 +889,80 @@ def go444keepuv(src,dir='down',clc=True,left=True,top=False,resampler=None):
         v=resampler(v,sw,sh,0,0)
         if clc:luma=resampler(luma,sw,sh,-ssw/2 if left else 0,-ssh/2 if top else 0)
         return core.std.ShufflePlanes([luma,u,v],[0,0,0],vs.YUV)
+
+
+def setrange(src,range):
+    if range in ('remove','rm','del'):
+        return src.std.RemoveFrameProps('_ColorRange')
+    if range in ('full','pc','jpeg'):
+        rangeval=0
+    elif range in ('limited','tv','mpeg'):
+        rangeval=1
+    else:
+        raise ValueError
+    return src.std.SetFrameProps(_ColorRange=rangeval)
+
+
+def setmatrix(src,matrix):
+    if matrix in ('remove','rm','del'):
+        return src.std.RemoveFrameProps('_Matrix')
+    if isinstance(matrix,int) and matrix>=0 and matrix<256:
+        return src.std.SetFrameProps(_Matrix=matrix)
+    matrixvaldict={'rgb':0,'709':1,'unspec':2,'fcc':4,'470bg':5,'170m':6,'240m':7,'ycgco':8,'2020ncl':9,'2020cl':10,'ydzdx':11,'chromancl':12,'chromacl':13,'ictcp':14,'601':5,709:1,601:5}
+    matrixval=matrixvaldict.get(matrix)
+    if matrixval==None:
+        raise ValueError
+    return src.std.SetFrameProps(_Matrix=matrixval)
+
+
+def settransfer(src,transfer):
+    if transfer in ('remove','rm','del'):
+        return src.std.RemoveFrameProps('_Transfer')
+    if isinstance(transfer,int) and transfer>=0 and transfer<256:
+        return src.std.SetFrameProps(_Transfer=transfer)
+    transfervaldict={'709':1,'unspec':2,'470m':4,'470bg':5,'601':6,'240m':7,'linear':8,'log100':9,'log316':10,'xvycc':11,'srgb':13,'2020_10':14,'2020_12':15,'st2084':16,'st428':17,'std-b67':18,'2084':16,'pq':16,'hlg':18,709:1,601:6,2084:16}
+    transferval=transfervaldict.get(transfer)
+    if transferval==None:
+        raise ValueError
+    return src.std.SetFrameProps(_Transfer=transferval)
+
+
+def setprimaries(src,primaries):
+    if primaries in ('remove','rm','del'):
+        return src.std.RemoveFrameProps('_Primaries')
+    if isinstance(primaries,int) and primaries>=0 and primaries<256:
+        return src.std.SetFrameProps(_Primaries=primaries)
+    primariesvaldict={'709':1,'unspec':2,'470m':4,'470bg':5,'170m':6,'240m':7,'film':8,'2020':9,'st428':10,'xyz':10,'st431-2':11,'st432-1':12,'jedec-p22':22,'p3dci':11,'p3d65':12,709:1,2020:9}
+    primariesval=primariesvaldict.get(primaries)
+    if primariesval==None:
+        raise ValueError
+    return src.std.SetFrameProps(_Primaries=primariesval)
+
+
+def setchromaloc(src,chromaloc):
+    if chromaloc in ('remove','rm','del'):
+        return src.std.RemoveFrameProps('_ChromaLocation')
+    if isinstance(chromaloc,int) and chromaloc>=0 and chromaloc<6:
+        return src.std.SetFrameProps(_ChromaLocation=chromaloc)
+    chromalocvaldict={'left':0,'center':1,'centre':1,'topleft':2,'top left':2,'top':3,'bottomleft':4,'bottom left':4,'bottom':5}
+    chromalocval=chromalocvaldict.get(chromaloc)
+    if chromalocval==None:
+        return ValueError
+    return src.std.SetFrameProps(_ChromaLocation=chromalocval)
+
+
+def setparams(src,range=None,matrix=None,transfer=None,primaries=None,chromaloc=None):
+    if range is not None:
+        src=setrange(src,range)
+    if matrix is not None:
+        src=setmatrix(src,matrix)
+    if transfer is not None:
+        src=settransfer(src,transfer)
+    if primaries is not None:
+        src=setprimaries(src,primaries)
+    if chromaloc is not None:
+        src=setchromaloc(src,chromaloc)
+    return src
 
 
 ########################################################
