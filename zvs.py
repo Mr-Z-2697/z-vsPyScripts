@@ -1,4 +1,4 @@
-__version__=str(1693504790/2**31)
+__version__=str(1693506583/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -760,6 +760,8 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
             fout.props.borderfracs_in_thr=', '.join(fracs_in_thr)
         return fout
     return core.std.ModifyFrame(src,cliplist,sel2)
+#why, past me, why?
+bsbd=badlyscaledborderdetect
 
 #rescale and try to unfuck border, target on highly specific situation
 #ALWAYS DO TESTS BEFORE USE!
@@ -860,6 +862,8 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_
     luma_rescale=core.std.MaskedMerge(luma_rescale,luma,mask)
     last=core.std.ShufflePlanes([luma_rescale,last],[0,1,2],vs.YUV) if not isgray else luma_rescale
     return last
+#sorry
+rattub=rescaleandtrytounfuckborders
     
 #for no reason
 def isvse():
