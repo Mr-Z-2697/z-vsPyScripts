@@ -1,4 +1,4 @@
-__version__=str(1693497134/2**31)
+__version__=str(1693498685/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -159,8 +159,7 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Non
     if rmdct==None: rmdct=dct
     if mvupd==None: mvupd=mvinrm
     if mv_pad==None:
-        if resize_pad: mv_pad=[0]*4
-        else: mv_pad=[blksize]*2+[rmblksize]*2
+        mv_pad=[blksize]*2+[rmblksize]*2
     elif isinstance(mv_pad,int):
         mv_pad=[mv_pad]*4
     
