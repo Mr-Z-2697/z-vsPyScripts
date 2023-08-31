@@ -1,4 +1,4 @@
-__version__=str(1693433214/2**31)
+__version__=str(1693490921/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -721,19 +721,27 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
     def sel2(n,f):
         fout=f[0].copy()
         ftot=len(f)
-        if showfrac: fracs=[]
+        if showfrac: fracs=[];fracslo=[]
         if conditionmode=='or':
             isbad=False
             for i in range(1,ftot):
                 isbad=isbad or f[i].props.frac<thr
-                if showfrac: fracs.append(f'{letters[i]}?:{f[i].props.frac}')
+                if showfrac:
+                    fracs.append(f'{letters[i]}?:{f[i].props.frac}')
+                    if f[i].props.frac<thr:
+                        fracslo.append(f'{letters[i]}?:{f[i].props.frac}')
         elif conditionmode=='and':
             isbad=True
             for i in range(1,ftot):
                 isbad=isbad and f[i].props.frac<thr
-                if showfrac: fracs.append(f'{letters[i]}?:{f[i].props.frac}')
+                if showfrac:
+                    fracs.append(f'{letters[i]}?:{f[i].props.frac}')
+                    if f[i].props.frac<thr:
+                        fracslo.append(f'{letters[i]}?:{f[i].props.frac}')
         fout.props.badborder=isbad
-        if showfrac: fout.props.borderfracs=', '.join(fracs)
+        if showfrac:
+            fout.props.borderfracs=', '.join(fracs)
+            fout.props.borderfracslo=', '.join(fracslo)
         return fout
     return core.std.ModifyFrame(src,cliplist,sel2)
 
@@ -997,12 +1005,13 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
     if preset2 is None:
         preset2=preset
 
-    if preset not in ["fast","lc","lcm","np","npm","high"] or preset2 not in ["fast","lc","lcm","np","npm","high"]:
-        raise ValueError("preset and preset2 must be 'fast','lc','lcm','np','npm',or'high'")
+    if preset not in ["fast","fastm","lc","lcm","np","npm","high","highm"] or preset2 not in ["fast","fastm","lc","lcm","np","npm","high","highm"]:
+        raise ValueError("preset and preset2 must be 'fast','fastm','lc','lcm','np','npm','highm',or'high'")
 
     parmas1={
         #block_step,bm_range, ps_num, ps_range
         "fast":[8,9,2,4],
+        "fastm":[7,9,2,4],
         "lc"  :[6,9,2,4],
         "lcm"  :[5,9,2,4],
         "np"  :[4,16,2,5],
@@ -1014,6 +1023,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
     vparmas1={
         #block_step,bm_range, ps_num, ps_range
         "fast":[8,7,2,4],
+        "fastm":[7,7,2,4],
         "lc"  :[6,9,2,4],
         "lcm"  :[5,9,2,4],
         "np"  :[4,12,2,5],
@@ -1025,6 +1035,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
     parmas2={
         #block_step,bm_range, ps_num, ps_range
         "fast":[7,9,2,5],
+        "fastm":[8,9,2,5],
         "lc"  :[5,9,2,5],
         "lcm"  :[6,9,2,5],
         "np"  :[3,16,2,6],
@@ -1036,6 +1047,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
     vparmas2={
         #block_step,bm_range, ps_num, ps_range
         "fast":[7,7,2,5],
+        "fastm":[8,7,2,5],
         "lc"  :[5,9,2,5],
         "lcm"  :[6,9,2,5],
         "np"  :[3,12,2,6],
