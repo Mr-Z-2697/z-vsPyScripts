@@ -1,4 +1,4 @@
-__version__=str(1693498685/2**31)
+__version__=str(1693504790/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -696,7 +696,7 @@ def idwt(src,w='Haar'):
     return core.std.ModifyFrame(src,src,partial(dwt,w=w))
 
 #badly scaled border detect
-def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,conditionmode='or',valuemode='avg',showfrac=False,thr=0.9,leftline1pos=0,leftline2pos=1,rightline1pos=0,rightline2pos=1,topline1pos=0,topline2pos=1,bottomline1pos=0,bottomline2pos=1):
+def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,conditionmode='or',valuemode='avg',showfrac=False,thr=0.9,thrmode='<',leftline1pos=0,leftline2pos=1,rightline1pos=0,rightline2pos=1,topline1pos=0,topline2pos=1,bottomline1pos=0,bottomline2pos=1):
     cliplist=[src]
     luma=xvs.getY(src)
     def sel1(n,f):
@@ -734,30 +734,30 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
         bf=core.std.ModifyFrame(bl1,[bl1,bl2],sel1)
         cliplist.append(bf)
         letters+='B'
-    def sel2(n,f):
+    def sel2(n,f,thr=thr):
         fout=f[0].copy()
         ftot=len(f)
-        if showfrac: fracs=[];fracslo=[]
+        if showfrac: fracs=[];fracs_in_thr=[]
         if conditionmode=='or':
             isbad=False
             for i in range(1,ftot):
-                isbad=isbad or f[i].props.frac<thr
+                isbad=isbad or eval(f'f[i].props.frac{thrmode}thr')
                 if showfrac:
                     fracs.append(f'{letters[i]}?:{f[i].props.frac}')
-                    if f[i].props.frac<thr:
-                        fracslo.append(f'{letters[i]}?:{f[i].props.frac}')
+                    if eval(f'f[i].props.frac{thrmode}thr'):
+                        fracs_in_thr.append(f'{letters[i]}?:{f[i].props.frac}')
         elif conditionmode=='and':
             isbad=True
             for i in range(1,ftot):
-                isbad=isbad and f[i].props.frac<thr
+                isbad=isbad and eval(f'f[i].props.frac{thrmode}thr')
                 if showfrac:
                     fracs.append(f'{letters[i]}?:{f[i].props.frac}')
-                    if f[i].props.frac<thr:
-                        fracslo.append(f'{letters[i]}?:{f[i].props.frac}')
+                    if eval(f'f[i].props.frac{thrmode}thr'):
+                        fracs_in_thr.append(f'{letters[i]}?:{f[i].props.frac}')
         fout.props.badborder=isbad
         if showfrac:
             fout.props.borderfracs=', '.join(fracs)
-            fout.props.borderfracslo=', '.join(fracslo)
+            fout.props.borderfracs_in_thr=', '.join(fracs_in_thr)
         return fout
     return core.std.ModifyFrame(src,cliplist,sel2)
 
