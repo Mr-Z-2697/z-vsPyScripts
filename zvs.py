@@ -1,4 +1,4 @@
-__version__=str(1693495449/2**31)
+__version__=str(1693497134/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -127,11 +127,13 @@ mvupd: only with "mvinrm", decide whether to modify the input dict
 lf: provide your own func for limit (does not override the "limit" arg of mdegrain) eg: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20) or a number represents "thr" in mvf.LimitFilter
 '''
 def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=None,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
-    if resize_pad!=None:
-        if isinstance(resize_pad,int):
-            src=rpclip(src,resize_pad)
-        elif isinstance(resize_pad,bool):
+    if resize_pad:
+        if isinstance(resize_pad,bool):
             src=rpclip(src,blksize)
+        elif isinstance(resize_pad,int):
+            src=rpclip(src,resize_pad)
+        else:
+            raise ValueError
     mvd_in=isinstance(mvin,dict)
     if thsadc==None:
         thsadc=thsad
@@ -157,8 +159,8 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Non
     if rmdct==None: rmdct=dct
     if mvupd==None: mvupd=mvinrm
     if mv_pad==None:
-        if resize_pad!=None: mv_pad=[0]*4
-        mv_pad=[blksize]*2+[rmblksize]*2
+        if resize_pad: mv_pad=[0]*4
+        else: mv_pad=[blksize]*2+[rmblksize]*2
     elif isinstance(mv_pad,int):
         mv_pad=[mv_pad]*4
     
@@ -219,11 +221,11 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Non
         last=mvf.LimitFilter(last,src,thr=lf,elast=20)
     if cs:
         last=rpfilter(last,src,filter=lambda x,y: ContraSharpening(x,y,radius=csrad,rep=csrep,planes=cspl),psize=4)
-    if resize_pad!=None:
-        if isinstance(resize_pad,int):
-            last=last.std.Crop(*[resize_pad]*4)
-        elif isinstance(resize_pad,bool):
+    if resize_pad:
+        if isinstance(resize_pad,bool):
             last=last.std.Crop(*[blksize]*4)
+        elif isinstance(resize_pad,int):
+            last=last.std.Crop(*[resize_pad]*4)
     return last
 #for backward compatibility
 zmde=zmdg
