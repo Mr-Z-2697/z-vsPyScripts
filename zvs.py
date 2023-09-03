@@ -1,4 +1,4 @@
-__version__=str(1693506583/2**31)
+__version__=str(1693749593/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -706,6 +706,8 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
                 fout.props.frac=f[0].props.PlaneStatsAverage/f[1].props.PlaneStatsAverage
             elif valuemode=='max':
                 fout.props.frac=f[0].props.PlaneStatsMax/f[1].props.PlaneStatsMax
+            elif valuemode=='min':
+                fout.props.frac=f[0].props.PlaneStatsMin/f[1].props.PlaneStatsMin
         except ZeroDivisionError:
             fout.props.frac=1
         return fout
@@ -754,6 +756,15 @@ def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,condit
                     fracs.append(f'{letters[i]}?:{f[i].props.frac}')
                     if eval(f'f[i].props.frac{thrmode}thr'):
                         fracs_in_thr.append(f'{letters[i]}?:{f[i].props.frac}')
+        elif isinstance(conditionmode,int):
+            countbad=0
+            for i in range(1,ftot):
+                countbad+=eval(f'f[i].props.frac{thrmode}thr')
+                if showfrac:
+                    fracs.append(f'{letters[i]}?:{f[i].props.frac}')
+                    if eval(f'f[i].props.frac{thrmode}thr'):
+                        fracs_in_thr.append(f'{letters[i]}?:{f[i].props.frac}')
+            isbad=countbad>=conditionmode
         fout.props.badborder=isbad
         if showfrac:
             fout.props.borderfracs=', '.join(fracs)
