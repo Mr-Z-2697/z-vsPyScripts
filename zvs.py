@@ -1,4 +1,4 @@
-__version__=str(1693749593/2**31)
+__version__=str(1694007453/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -231,7 +231,7 @@ zmde=zmdg
 
 #multi-pass f3kdb with optional contra-sharpening, masking and limit filter
 #idea stolen from xyx98
-def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,2],rs=[0,0],bf=[True,True],dg=[False,False],opt=[-1,-1],mt=[True,True],da=[3,3],ktv=[False,False],od=[16,16],rar=[1,1],rag=[1,1],rpr=[1,1],rpg=[1,1],passes=2,neo=True,casstr=0.3,mask=True,limit=True,s16=False):
+def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,2],rs=[0,0],bf=[True,True],dg=[False,False],opt=[-1,-1],mt=[True,True],da=[3,3],ktv=[False,False],od=[16,16],rar=[1,1],rag=[1,1],rpr=[1,1],rpg=[1,1],passes=2,neo=True,casstr=0,mask=True,limit=True,s16=False):
     last=db=src.fmtc.bitdepth(bits=16) if s16 else src
     r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg=[[i]*passes if isinstance(i,int) else i+[i[-1]]*passes for i in (r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg)]
     
@@ -267,7 +267,7 @@ def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,
             dbmask=xvs.mwdbmask(last)
         db=core.std.MaskedMerge(db,last,dbmask)
 
-    if casstr==0:
+    if casstr<=0:
         return db
 
     cas=core.cas.CAS(last,casstr,planes=[0,1,2])
