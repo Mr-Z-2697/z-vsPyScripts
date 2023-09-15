@@ -1,4 +1,4 @@
-__version__=str(1694049806/2**31)
+__version__=str(1694817074/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -778,7 +778,7 @@ bsbd=badlyscaledborderdetect
 
 #rescale and try to unfuck border, target on highly specific situation
 #ALWAYS DO TESTS BEFORE USE!
-def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,taps=3,nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
+def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,taps=3,nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,cuth=1,cutv=1,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
     if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
     srcw,srch=src.width,src.height
@@ -824,8 +824,8 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_
     ###
     blk=core.std.BlankClip(luma_de,color=0)
     bmask=bordermask(blk,*[rim]*4,32)
-    luma_de1=luma_de.std.Crop(right=1,bottom=1).std.AddBorders(left=1,top=1,color=0)
-    luma_de2=luma_de2.std.Crop(left=1,top=1).std.AddBorders(right=1,bottom=1,color=0)
+    luma_de1=luma_de.std.Crop(right=cuth,bottom=cutv).std.AddBorders(left=cuth,top=cutv,color=0)
+    luma_de2=luma_de2.std.Crop(left=cuth,top=cutv).std.AddBorders(right=cuth,bottom=cutv,color=0)
     luma_de1=core.std.MaskedMerge(blk,luma_de1,bmask)
     luma_de2=core.std.MaskedMerge(blk,luma_de2,bmask)
 
