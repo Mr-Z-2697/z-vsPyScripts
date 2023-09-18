@@ -9,18 +9,6 @@ from functools import partial
 from typing import Any, Mapping, Optional, Sequence, Union
 import nnedi3_resample as nnrs
 
-try:
-    from zvs_defaults import *
-    nnrs_mode_default
-    bm3d_mode_default
-    bm3d_extractor_exp_default
-except:
-    nnrs_mode_default='nnedi3'
-    bm3d_mode_default='cpu'
-    bm3d_extractor_exp_default=0
-
-nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode=nnrs_mode_default,nns=3,nsize=3,qual=2,pscrn=1)
-Nnrs=nnrs
 
 '''
 functions:
@@ -48,6 +36,23 @@ functions:
 - setrange, setmatrix, settransfer, setprimaries, setchromaloc, setparams
 '''
 
+nnrs_mode_default='nnedi3'
+bm3d_mode_default='cpu'
+bm3d_extractor_exp_default=0
+
+# Override the previous values if they're found in env.
+try:
+    from dotenv import load_dotenv
+
+    load_dotenv(override=True)
+except ModuleNotFoundError:
+    pass
+
+
+nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode=nnrs_mode_default,nns=3,nsize=3,qual=2,pscrn=1)
+Nnrs=nnrs
+
+
 #denoise pq hdr content by partially convert it to bt709, do denoise in bt709 then take the difference back to pq, may yield a better result
 def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp=bm3d_mode_default,vt=0,mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,truemotion=False,nl=100,contrasharp=1,to709=1,show='output',limit=None,limitc=None,sigma2=None,radius2=None,lf=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,pref=None):
     if lumaonly:
@@ -68,7 +73,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
             denoised=ContraSharpening(denoised,sdr)
         if show=='mdecs':
             return denoised
-    
+
     if not bm3dtyp=='no':
         if vt==0:
             if bm3dtyp=='cpu':
@@ -107,7 +112,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
 
     if to709:
         denoised,sdr=[core.resize.Bicubic(i,transfer_in=1,transfer=16,nominal_luminance=nl) for i in (denoised,sdr)]
-    
+
     output=core.std.Expr([src,sdr,denoised],'x y - z +') if to709 else denoised
     if lumaonly:
         output=core.std.ShufflePlanes([output,chromaclip],[0,1,2],vs.YUV)
@@ -164,7 +169,7 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
         mv_pad=[blksize]*2+[rmblksize]*2
     elif isinstance(mv_pad,int):
         mv_pad=[mv_pad]*4
-    
+
     sup,sup2,sup3=0,0,0
     if mvd_in:
         supin=mvin.get('sup')
@@ -237,7 +242,7 @@ def zmde(src,resize_pad=None,truemotion=False,**args):
 def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,2],rs=[0,0],bf=[True,True],dg=[False,False],opt=[-1,-1],mt=[True,True],da=[3,3],ktv=[False,False],od=[16,16],rar=[1,1],rag=[1,1],rpr=[1,1],rpg=[1,1],passes=2,neo=True,casstr=0,mask=True,limit=True,s16=False):
     last=db=src.fmtc.bitdepth(bits=16) if s16 else src
     r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg=[[i]*passes if isinstance(i,int) else i+[i[-1]]*passes for i in (r,y,cb,cr,gy,gc,sm,rs,bf,dg,opt,mt,da,ktv,od,rar,rag,rpr,rpg)]
-    
+
     # l1,l2,l3,l4,l5,l6=[len(i) for i in (r,y,cb,cr,gy,gc)]
     # if l1==l2==l3==l4==l5==l6:
     #     passes=l6
@@ -262,7 +267,7 @@ def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,
         db=limit(db,last)
     else:
         pass
-    
+
     if mask:
         if isinstance(mask,vs.VideoNode):
             dbmask=mask
@@ -276,7 +281,7 @@ def xdbcas(src,r=[8,15],y=[32,24],cb=[16,10],cr=[16,10],gy=[0,0],gc=[0,0],sm=[2,
     cas=core.cas.CAS(last,casstr,planes=[0,1,2])
     cas=mvf.LimitFilter(cas,last,thr=0.3,thrc=0.15,brighten_thr=0.15,elast=4,planes=[0,1,2])
     last=core.std.Expr([cas,last,db],'x y - z +')
-    
+
     return last
 
 #arbitrary crop, result resolution must be compatible with src clip subsampling tho
@@ -814,7 +819,7 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_
     luma_de2=core.descale.Descale(luma32,w,h,kernel=kernel,b=b,c=c,taps=taps,src_top=offst1,src_left=offsl1)
     resize_params=f'filter_param_a={b},filter_param_b={c},'if kernel=='bicubic'else f'filter_param_a={taps},'if kernel=='lanczos'else''
     luma_up=eval(f'core.resize.{kernel.capitalize()}(luma_de,{srcw},{srch},{resize_params}src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16,dmode=1)')
-    
+
     if isinstance(mask_gen_clip,vs.VideoNode):
         mclip=xvs.getY(mask_gen_clip)
         mclip_up=luma_up[1::2]
@@ -878,7 +883,7 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_
     return last
 #sorry
 rattub=rescaleandtrytounfuckborders
-    
+
 #for no reason
 def isvse():
     return sys.executable.find('vsedit')!=-1
@@ -1028,7 +1033,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
     iref=core.fmtc.bitdepth(iref,bits=32) if isinstance(iref,vs.VideoNode) else None
     if chroma is True and clip.format.id !=vs.YUV444PS:
         raise ValueError("chroma=True only works on yuv444")
-    
+
     if radius2 is None:
         radius2=radius
     isvbm3d=radius+radius2>0
@@ -1096,7 +1101,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
     else:
         p1,p2=parmas1,parmas2
 
-    
+
     block_step1=p1[preset][0] if block_step1 is None else block_step1
     bm_range1=p1[preset][1] if bm_range1 is None else bm_range1
     ps_num1=p1[preset][2] if ps_num1 is None else ps_num1
@@ -1107,7 +1112,7 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
     ps_num2=p2[preset2][2] if ps_num2 is None else ps_num2
     ps_range2=p2[preset2][3] if ps_range2 is None else ps_range2
 
-    if iterates:    
+    if iterates:
         outputs=list()
     if isvbm3d:
         flt=bm3d_core(clip,ref=iref,mode=mode,sigma=sigma,radius=radius,block_step=block_step1,bm_range=bm_range1,ps_num=ps_num1,ps_range=ps_range1,chroma=chroma,fast=fast,extractor_exp=extractor_exp,device_id=device_id,bm_error_s=bm_error_s,transform_2d_s=transform_2d_s,transform_1d_s=transform_1d_s,vt=vt)
@@ -1176,11 +1181,11 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
 
     if w>=src_w or h>=src_h:
         raise ValueError("w,h should less than input resolution")
-    
+
     kernel=kernel.strip().capitalize()
     if kernel not in ["Debilinear","Debicubic","Delanczos","Despline16","Despline36","Despline64"]:
         raise ValueError("unsupport kernel")
-    
+
     src=core.fmtc.bitdepth(src,bits=16)
     luma=xvs.getY(src)
     tin='1886' if args.get("tin") is None else args.get("tin")
@@ -1202,7 +1207,7 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     else:
         luma_de=core.descale.Delanczos(luma.fmtc.bitdepth(bits=32),w,h,taps=args.get("taps"))
         luma_up=core.resize.Lanczos(luma_de,src_w,src_h,filter_param_a=args.get("taps")).fmtc.bitdepth(bits=16,dmode=1)
-    
+
     if isinstance(mask_gen_clip,vs.VideoNode):
         mclip=xvs.getY(mask_gen_clip)
         mclip_up=luma_up[1::2]
@@ -1246,7 +1251,7 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
             mask=xvs.inpand(mask,cycle=mthr[1])
 
         luma_rescale=core.std.MaskedMerge(luma_rescale,xvs.getY(src),mask)
-    
+
     if show=="descale":
         return luma_de
     elif show=="mask":
@@ -1278,7 +1283,7 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
 
     if w>=src_w or h>=src_h:
         raise ValueError("w,h should less than input resolution")
-    
+
     kernel=kernel.strip().capitalize()
     if kernel not in ["Debilinear","Debicubic","Delanczos","Despline16","Despline36","Despline64"]:
         raise ValueError("unsupport kernel")
@@ -1342,7 +1347,7 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     else:
         luma_rescale=nnrs.nnedi3_resample(luma_de,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
 
-    def calc(n,f): 
+    def calc(n,f):
         fout=f[1].copy()
         fout.props["diff"]=f[0].props["PlaneStatsAverage"]
         return fout
@@ -1360,7 +1365,7 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
             mask=xvs.inpand(mask,cycle=mthr[1])
 
         luma_rescale=core.std.MaskedMerge(luma_rescale,xvs.getY(src),mask)
-    
+
     if selective:
         base=upper-lower
         #x:rescale y:src
@@ -1480,8 +1485,8 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNod
         descaled=descaled[::2]
         upscaled=upscaled[::2]
     diff=core.std.Expr([clip32,upscaled],"x y - abs dup 0.015 > swap 0 ?").std.PlaneStats()
-    
-    def calc(n,f): 
+
+    def calc(n,f):
         fout=f[1].copy()
         fout.props["diff"]=f[0].props["PlaneStatsAverage"]*multiple
         return fout
@@ -1562,7 +1567,7 @@ def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask
         descaled=descaled[::2]
         upscaled=upscaled[::2]
     diff=core.std.Expr([clip32,upscaled],"x y - abs dup 0.015 > swap 0 ?").std.Crop(10, 10, 10, 10).std.PlaneStats()
-    def calc(n,f): 
+    def calc(n,f):
         fout=f[1].copy()
         fout.props["diff"]=f[0].props["PlaneStatsAverage"]*multiple
         return fout
@@ -1778,7 +1783,7 @@ def SCSharpen(clip:vs.VideoNode,ref:vs.VideoNode,max_sharpen_weight=3/7,min_shar
     # trust the user( ͡° ͜ʖ ͡°) 爱来自中国
     # if max_sharpen_weight >1 or max_sharpen_weight <=0 :
     #     raise ValueError("max_sharpen_weight should in (0,1]")
-    
+
     # if min_sharpen_weight >1 or min_sharpen_weight <0  or max_sharpen_weight<min_sharpen_weight:
     #     raise ValueError("min_sharpen_weight should in [0,1] and less than max_sharpen_weight")
 
@@ -1812,7 +1817,7 @@ def SCSharpen(clip:vs.VideoNode,ref:vs.VideoNode,max_sharpen_weight=3/7,min_shar
 
     expr=f"{base} 0 = {L1} z * {L2} y * + {k1} {L1} > {L1} z * {L2} y * + {k1} {L3} < {L3} z * {L4} y * + {k1} z * {k2} y * + ? ? ?"
     last=core.akarin.Expr([ref,last,sharp],expr)
-    
+
     if isYUV:
         last=core.std.ShufflePlanes([last,clip],[0,1,2],vs.YUV)
 
@@ -1824,7 +1829,7 @@ scsharpen=SCSharpen
 #copy-paste from xyx98's xvs
 def getsharpness(clip,show=False):
 
-    def calc(n,f): 
+    def calc(n,f):
         fout=f[1].copy()
         fout.props["sharpness"]=f[0].props["PlaneStatsAverage"]*65535
         return fout
