@@ -83,6 +83,9 @@ def pqdenoise(
     sdr = Transfer.BT709.apply(func.work_clip)
 
     den = schizo_denoise(sdr, sigma, contra=contra, planes=planes, **kwargs)
+
+    sdr, den = (Transfer.ST2084.apply(c) for c in (sdr, den))
+
     merged = expr_func([clip, sdr, den], 'x y - z +', func=pqdenoise)
 
     return func.return_clip(merged)
