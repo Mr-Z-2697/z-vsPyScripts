@@ -1,4 +1,4 @@
-__version__=str(1694817074/2**31)
+__version__=str(1695009701/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -126,7 +126,7 @@ mvinrm: apply recalculate on mvs from "mvin"
 mvupd: only with "mvinrm", decide whether to modify the input dict
 lf: provide your own func for limit (does not override the "limit" arg of mdegrain) eg: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20) or a number represents "thr" in mvf.LimitFilter
 '''
-def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=None,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=False,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
+def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
     if resize_pad:
         if isinstance(resize_pad,bool):
             src=rpclip(src,blksize)
@@ -229,7 +229,8 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Non
             last=last.std.Crop(*[resize_pad]*4)
     return last
 #for backward compatibility
-zmde=zmdg
+def zmde(src,resize_pad=None,truemotion=False,**args):
+    return zmdg(src,resize_pad=resize_pad,truemotion=truemotion,**args)
 
 #multi-pass f3kdb with optional contra-sharpening, masking and limit filter
 #idea stolen from xyx98
