@@ -6,6 +6,7 @@ import xvs
 import mvsfunc as mvf
 import muvsfunc as muf
 from functools import partial
+from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Union
 import nnedi3_resample as nnrs
 
@@ -36,18 +37,18 @@ functions:
 - setrange, setmatrix, settransfer, setprimaries, setchromaloc, setparams
 '''
 
-nnrs_mode_default='nnedi3'
-bm3d_mode_default='cpu'
-bm3d_extractor_exp_default=0
-
-# Override the previous values if they're found in env.
 try:
     from dotenv import load_dotenv
 
-    load_dotenv(override=True)
+    if (env := Path(__file__).parent / ".env").exists():
+        load_dotenv(env)
 except ModuleNotFoundError:
     pass
 
+# Override these values if they're found in .env.
+nnrs_mode_default = os.environ.get("nnrs_mode_default", "nnedi3")
+bm3d_mode_default = os.environ.get("bm3d_mode_default", "cpu")
+bm3d_extractor_exp_default = os.environ.get("bm3d_extractor_exp_default", 0)
 
 nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode=nnrs_mode_default,nns=3,nsize=3,qual=2,pscrn=1)
 Nnrs=nnrs
