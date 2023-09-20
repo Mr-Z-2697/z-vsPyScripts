@@ -8,9 +8,10 @@ Z's weird vapoursynth python script(s)
 
 `import zvs`
 
-### .env
+### .env.zvs(.global)
 
 NOT necessary. Will fall back to default values if it can't be found.
+The global one resides alongside the main script file zvs.py, and a local one can override global values, you should place it somewhere can be found by python-dotenv, like you project root folder.(that means follow the python-dotenv documents there, yes I'm lazy)
 
 ### vsenv
 
@@ -29,7 +30,6 @@ core.max_cache_size=xxx #change these values can work inside vsenv.py but like i
 ### python packages
 
 -   [mvsfunc](https://github.com/HomeOfVapourSynthEvolution/mvsfunc)
--   [vs-denoise](https://github.com/Irrational-Encoding-Wizardry/vs-denoise)
 -   numpy(optional)
 -   opencv-python(optional)
 -   PyWavelets(optional)
@@ -37,7 +37,6 @@ core.max_cache_size=xxx #change these values can work inside vsenv.py but like i
 
 ### python scripts
 
--   ~[havsfunc](https://github.com/HomeOfVapourSynthEvolution/havsfunc), preferably [7f0a9a7](https://github.com/HomeOfVapourSynthEvolution/havsfunc/tree/7f0a9a7a37b60a05b9f408024d203e511e544a61)~ oh wait, i didn't really use it other than ContraSharpening in the script... so...
 -   [muvsfunc](https://github.com/WolframRhodium/muvsfunc)
 -   [nnedi3_resample](https://github.com/HomeOfVapourSynthEvolution/nnedi3_resample)
 -   [xvs](https://github.com/xyx98/my-vapoursynth-script)

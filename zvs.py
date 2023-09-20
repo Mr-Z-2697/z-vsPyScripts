@@ -1,4 +1,4 @@
-__version__=str(1695009701/2**31)
+__version__=str(1695209026/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -9,7 +9,6 @@ from functools import partial
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Union
 import nnedi3_resample as nnrs
-
 
 '''
 functions:
