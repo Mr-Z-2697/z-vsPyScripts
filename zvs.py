@@ -40,8 +40,9 @@ functions:
 try:
     from dotenv import load_dotenv
 
-    if (env := Path(__file__).parent / ".env").exists():
+    if (env := Path(__file__).parent / ".env.zvs.global").exists():
         load_dotenv(env)
+    load_dotenv('.env.zvs',override=True)
 except ModuleNotFoundError:
     pass
 
