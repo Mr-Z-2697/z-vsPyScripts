@@ -10,7 +10,7 @@ Z's weird vapoursynth python script(s)
 
 ### .env.zvs(.global)
 
-NOT necessary. Will fall back to default values if it can't be found.
+NOT necessary. Will fall back to default values if it can't be found.  
 The global one resides alongside the main script file zvs.py, and a local one can override global values, you should place it somewhere can be found by python-dotenv, like you project root folder.(that means follow the python-dotenv documents there, yes I'm lazy)
 
 ### vsenv
