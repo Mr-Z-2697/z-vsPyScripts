@@ -1,4 +1,4 @@
-__version__=str(1695209026/2**31)
+__version__=str(1695307673/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -144,7 +144,7 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
             raise ValueError
     mvd_in=isinstance(mvin,dict)
     if thsadc==None:
-        thsadc=thsad
+        thsadc=thsad//2
     last=src
     if pref!=None:
         pass
@@ -235,8 +235,9 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
             last=last.std.Crop(*[resize_pad]*4)
     return last
 #for backward compatibility
-def zmde(src,resize_pad=None,truemotion=False,**args):
-    return zmdg(src,resize_pad=resize_pad,truemotion=truemotion,**args)
+def zmde(src,thsad=100,thsadc=None,resize_pad=None,truemotion=False,**args):
+    if thsadc==None:thsadc=thsad
+    return zmdg(src,thsad=thsad,thsadc=thsadc,resize_pad=resize_pad,truemotion=truemotion,**args)
 
 #multi-pass f3kdb with optional contra-sharpening, masking and limit filter
 #idea stolen from xyx98
