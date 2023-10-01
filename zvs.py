@@ -1,4 +1,4 @@
-__version__=str(1695307673/2**31)
+__version__=str(1696182023/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -27,13 +27,14 @@ functions:
 - quack
 - bilateraluv
 - dft, idft, dct, idct
-- badlyscaledborderdetect
-- rescaleandtrytounfuckborders
+- badlyscaledborderdetect (bsbd for short)
+- rescaleandtrytounfuckborders (rattub for short)
 - isvse, isvspipe
 - fmvfps
 - hrife
 - go444keepuv
 - setrange, setmatrix, settransfer, setprimaries, setchromaloc, setparams
+- gaussianblurfmtc (gbf for short)
 '''
 
 try:
@@ -1012,6 +1013,35 @@ def setparams(src,range=None,matrix=None,transfer=None,primaries=None,chromaloc=
     if chromaloc is not None:
         src=setchromaloc(src,chromaloc)
     return src
+
+#just for fun
+#but impulse mode is more accurate than gaussian blur functions provided by tcanny and bilateral in my book (but much slower at very large stdev (but faster at small stdev (< 9 on my machine)))
+def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse'):
+    import warnings
+    if stdev==None: stdev=sigma #lame alias approach
+    if mode=='resample': #by dnjulek at https://github.com/sekrit-twc/zimg/issues/186#issue-1462626153
+        if stdev<1:
+            warnings.warn('gaussianblurfmtc: resample mode will not behave normal with stdev < 1.')
+        sw,sh=src.width,src.height
+        dw,dh=round(sw/stdev),round(sh/stdev)
+        last=core.fmtc.resample(src,dw,dh,kernel='bilinear',css='444') if stdev>1 else src
+        last=core.fmtc.resample(last,sw,sh,kernel='gauss',a1=9,csp=src.format.replace(bits_per_sample=16),fv=-1,fh=-1)
+        return last
+    elif mode=='impulse':
+        import math
+        import numpy as np
+        import scipy
+        is444=src.format.subsampling_w==src.format.subsampling_w==0
+        r=math.ceil(max(1,stdev)*3)
+        gauss_imp=scipy.stats.norm.pdf(np.linspace(-r,r,1+2*r,dtype=np.int_),0,stdev)
+        last=core.fmtc.resample(src,kernel='impulse',fv=-1,fh=-1,impulse=gauss_imp,css=['420','444'][is444],kovrspl=[(1,2,2),1][is444])
+        return last
+    else:
+        raise ValueError(f'what do you mean "{mode}"?')
+#i haven't played this game, but...
+#https://granbluefantasy.jp/
+gbf=gaussianblurfmtc
+
 
 
 ########################################################
