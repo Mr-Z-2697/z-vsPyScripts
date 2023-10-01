@@ -1,4 +1,4 @@
-__version__=str(1696185962/2**31)
+__version__=str(1696195461/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1017,7 +1017,7 @@ def setparams(src,range=None,matrix=None,transfer=None,primaries=None,chromaloc=
 #just for fun
 #but impulse mode is more accurate than gaussian blur functions provided by tcanny and bilateral in my book, most likely the border handling stuff, i dunno (but much slower at very large stdev (but faster at small stdev (< 9 on my machine)))
 #impdr: impulse mode pre-downscale ratio, to tradeoff for some speed perhaps
-def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',impdr=1,kd='bilinear',rsa1=9):
+def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',impext=3,impdr=1,kd='bilinear',rsa1=9):
     import warnings
     if stdev==None: stdev=sigma #lame alias approach
     sw,sh=src.width,src.height
@@ -1037,7 +1037,7 @@ def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',impdr=1,kd='bilinear'
         stdev/=impdr
         is444=src.format.subsampling_w==src.format.subsampling_w==0
         if not is444: dw,dh=round(dw/2)*2,round(dh/2)*2
-        r=math.ceil(max(1,stdev)*3)
+        r=math.ceil(max(1,stdev)*impext)
         gauss_imp=scipy.stats.norm.pdf(np.linspace(-r,r,1+2*r,dtype=np.int_),0,stdev)
         last=core.fmtc.resample(src,dw,dh,kernel=kd) if impdr>1 else src
         last=core.fmtc.resample(last,sw,sh,kernel='impulse',fv=-1,fh=-1,impulse=gauss_imp,css=['420','444'][is444],kovrspl=[(1,2,2),1][is444])
