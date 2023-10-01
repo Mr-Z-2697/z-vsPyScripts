@@ -1,4 +1,4 @@
-__version__=str(1696182023/2**31)
+__version__=str(1696185962/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1015,33 +1015,38 @@ def setparams(src,range=None,matrix=None,transfer=None,primaries=None,chromaloc=
     return src
 
 #just for fun
-#but impulse mode is more accurate than gaussian blur functions provided by tcanny and bilateral in my book (but much slower at very large stdev (but faster at small stdev (< 9 on my machine)))
-def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse'):
+#but impulse mode is more accurate than gaussian blur functions provided by tcanny and bilateral in my book, most likely the border handling stuff, i dunno (but much slower at very large stdev (but faster at small stdev (< 9 on my machine)))
+#impdr: impulse mode pre-downscale ratio, to tradeoff for some speed perhaps
+def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',impdr=1,kd='bilinear',rsa1=9):
     import warnings
     if stdev==None: stdev=sigma #lame alias approach
+    sw,sh=src.width,src.height
     if mode=='resample': #by dnjulek at https://github.com/sekrit-twc/zimg/issues/186#issue-1462626153
         if stdev<1:
             warnings.warn('gaussianblurfmtc: resample mode will not behave normal with stdev < 1.')
-        sw,sh=src.width,src.height
         dw,dh=round(sw/stdev),round(sh/stdev)
-        last=core.fmtc.resample(src,dw,dh,kernel='bilinear',css='444') if stdev>1 else src
-        last=core.fmtc.resample(last,sw,sh,kernel='gauss',a1=9,csp=src.format.replace(bits_per_sample=16),fv=-1,fh=-1)
+        last=core.fmtc.resample(src,dw,dh,kernel=kd,css='444') if stdev>1 else src
+        last=core.fmtc.resample(last,sw,sh,kernel='gauss',a1=rsa1,csp=src.format.replace(bits_per_sample=16),fv=-1,fh=-1)
         return last
     elif mode=='impulse':
         import math
         import numpy as np
         import scipy
+        if impdr<1: raise ValueError('impdr<1, don\'t do it bruh.')
+        dw,dh=round(sw/impdr),round(sh/impdr)
+        stdev/=impdr
         is444=src.format.subsampling_w==src.format.subsampling_w==0
+        if not is444: dw,dh=round(dw/2)*2,round(dh/2)*2
         r=math.ceil(max(1,stdev)*3)
         gauss_imp=scipy.stats.norm.pdf(np.linspace(-r,r,1+2*r,dtype=np.int_),0,stdev)
-        last=core.fmtc.resample(src,kernel='impulse',fv=-1,fh=-1,impulse=gauss_imp,css=['420','444'][is444],kovrspl=[(1,2,2),1][is444])
+        last=core.fmtc.resample(src,dw,dh,kernel=kd) if impdr>1 else src
+        last=core.fmtc.resample(last,sw,sh,kernel='impulse',fv=-1,fh=-1,impulse=gauss_imp,css=['420','444'][is444],kovrspl=[(1,2,2),1][is444])
         return last
     else:
         raise ValueError(f'what do you mean "{mode}"?')
 #i haven't played this game, but...
 #https://granbluefantasy.jp/
 gbf=gaussianblurfmtc
-
 
 
 ########################################################
