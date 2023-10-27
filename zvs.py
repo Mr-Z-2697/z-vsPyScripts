@@ -1,4 +1,4 @@
-__version__=str(1696195461/2**31)
+__version__=str(1698406132/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -459,16 +459,18 @@ def rpclip(input,psize=2,left=None,right=None,top=None,bottom=None):
 
 #nnedi3 preview
 def n3pv(*args,**kwargs):
-    scale=kwargs.get('scale') if kwargs.get('scale')!=None else 2
-    nns=kwargs.get('nns') if kwargs.get('nns')!=None else 1
-    nsize=kwargs.get('nsize') if kwargs.get('nsize')!=None else 0
-    qual=kwargs.get('qual') if kwargs.get('qual')!=None else 1
-    mode=kwargs.get('mode') if kwargs.get('mode')!=None else nnrs_mode_default
-    int_=kwargs.get('int') if kwargs.get('int')!=None else True
-    depth=kwargs.get('depth') if kwargs.get('depth')!=None else 8
+    scale=kwargs.get('scale',2)
+    nns=kwargs.get('nns',1)
+    nsize=kwargs.get('nsize',0)
+    qual=kwargs.get('qual',1)
+    mode=kwargs.get('mode',nnrs_mode_default)
+    int_=kwargs.get('int',True)
+    depth=kwargs.get('depth',8)
     mats=kwargs.get('mats')
     fulls=kwargs.get('fulls')
     bypass=mode=='bypass'
+    madvr=mode=='madvr'
+    madvr_algo=kwargs.get('madvr_algo','nguSharpLow')
     csp=eval(f'vs.RGB{depth*3}')
     last=list()
     if len(args)==1:
@@ -476,20 +478,26 @@ def n3pv(*args,**kwargs):
             mats=[mats]*len(args[0]) if not isinstance(mats,(list,tuple)) else mats
             fulls=[fulls]*len(args[0]) if not isinstance(fulls,(list,tuple)) else fulls
             for i,clip in enumerate(args[0]):
+                _w,_h=clip.width*scale,clip.height*scale
                 if bypass:
-                    _tmpclp=core.resize.Bicubic(clip,clip.width*scale,clip.height*scale)
+                    _tmpclp=core.resize.Bicubic(clip,_w,_h)
                     _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i],full=fulls[i])
+                elif madvr:
+                    _tmpclp=core.madvr.Process(clip,[f'upscale({_w},{_h},{madvr_algo})',f'setOutputFormat(rgbPC,{depth})'])
                 else:
-                    _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i],fulls=fulls[i])
+                    _tmpclp=Nnrs.nnedi3_resample(clip,_w,_h,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i],fulls=fulls[i])
                 last.append(_tmpclp)
         elif isinstance(args[0],vs.VideoNode):
             mats=mats[0] if isinstance(mats,(list,tuple)) else mats
             fulls=fulls[0] if isinstance(fulls,(list,tuple)) else fulls
+            _w,_h=args[0].width*scale,args[0].height*scale
             if bypass:
-                _tmpclp=core.resize.Bicubic(args[0],args[0].width*scale,args[0].height*scale)
+                _tmpclp=core.resize.Bicubic(args[0],_w,_h)
                 _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats,full=fulls)
+            elif madvr:
+                _tmpclp=core.madvr.Process(args[0],[f'upscale({_w},{_h},{madvr_algo})',f'setOutputFormat(rgbPC,{depth})'])
             else:
-                _tmpclp=Nnrs.nnedi3_resample(args[0],args[0].width*scale,args[0].height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats,fulls=fulls)
+                _tmpclp=Nnrs.nnedi3_resample(args[0],_w,_h,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats,fulls=fulls)
             last.append(_tmpclp)
         else:
             raise TypeError('input for preview should be list or clip')
@@ -497,11 +505,14 @@ def n3pv(*args,**kwargs):
         mats=[mats]*len(args) if not isinstance(mats,(list,tuple)) else mats
         fulls=[fulls]*len(args) if not isinstance(fulls,(list,tuple)) else fulls
         for i,clip in enumerate(args):
+            _w,_h=clip.width*scale,clip.height*scale
             if bypass:
-                _tmpclp=core.resize.Bicubic(clip,clip.width*scale,clip.height*scale)
+                _tmpclp=core.resize.Bicubic(clip,_w,_h)
                 _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i],full=fulls[i]).sub.Subtitle('clip%d'%i)
+            elif madvr:
+                _tmpclp=core.madvr.Process(clip,[f'upscale({_w},{_h},{madvr_algo})',f'setOutputFormat(rgbPC,{depth})'])
             else:
-                _tmpclp=Nnrs.nnedi3_resample(clip,clip.width*scale,clip.height*scale,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i],fulls=fulls[i]).sub.Subtitle('clip%d'%i)
+                _tmpclp=Nnrs.nnedi3_resample(clip,_w,_h,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i],fulls=fulls[i]).sub.Subtitle('clip%d'%i)
             last.append(_tmpclp)
     return last[0] if len(last)==1 else core.std.Interleave(last) if int_ else last
 
