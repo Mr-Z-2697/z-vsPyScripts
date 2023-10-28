@@ -1,4 +1,4 @@
-__version__=str(1698516533/2**31)
+__version__=str(1698522408/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -385,7 +385,7 @@ def nlm(src,planes=[0,1,2],rclip=None,h=1.2,amd=False,mode='ocl',**args):
     if amd:
         y,u,v=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (y,u,v)]
     if isinstance(rclip,vs.VideoNode):
-        ry,ru,rv=[i(rclip) for i in (xvs.getY,xvs.getU,xvs.getV)]
+        ry,ru,rv=core.std.SplitPlanes(rclip)
         if amd:
             ry,ru,rv=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (ry,ru,rv)]
     else:
