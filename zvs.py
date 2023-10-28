@@ -1,4 +1,4 @@
-__version__=str(1698406132/2**31)
+__version__=str(1698516533/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -365,7 +365,7 @@ def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matr
 #a workaround for amd rdna graphic cards to use knlmeanscl
 def knl4a(src,*args,**kwargs):
     return nlm(src,*args,**kwargs,amd=True,mode='ocl')
-def nlm(src,planes=[1,1,1],rclip=None,h=1.2,amd=False,mode='ocl',**args):
+def nlm(src,planes=[0,1,2],rclip=None,h=1.2,amd=False,mode='ocl',**args):
     NLM={'ocl':core.knlm.KNLMeansCL,'cuda':core.nlm_cuda.NLMeans}[mode] if not amd else core.knlm.KNLMeansCL
     if isinstance(h,list):
         if len(h)>=3:
@@ -377,10 +377,11 @@ def nlm(src,planes=[1,1,1],rclip=None,h=1.2,amd=False,mode='ocl',**args):
     else:
         h=[h,h,h]
 
-    if not amd and planes==[1,1,1] and h[1]==h[2]:
+    p0,p1,p2=[i in planes for i in (0,1,2)]
+    if not amd and p0 and p1 and p2 and h[1]==h[2]:
         return NLM(NLM(src,rclip=rclip,h=h[0],channels='Y',**args),rclip=rclip,h=h[1],channels='UV',**args)
 
-    y,u,v=xvs.extractPlanes(src)
+    y,u,v=core.std.SplitPlanes(src)
     if amd:
         y,u,v=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (y,u,v)]
     if isinstance(rclip,vs.VideoNode):
@@ -389,16 +390,16 @@ def nlm(src,planes=[1,1,1],rclip=None,h=1.2,amd=False,mode='ocl',**args):
             ry,ru,rv=[core.std.ShufflePlanes([i,i,i],[0,0,0],vs.RGB) for i in (ry,ru,rv)]
     else:
         ry=ru=rv=None
-    if planes[0]:
+    if p0:
         y=NLM(y,rclip=ry,h=h[0],**args)
-    if planes[1] and planes[2] and h[1]==h[2]:
+    if p1 and p2 and h[1]==h[2]:
         uv=NLM(src,rclip=rclip,h=h[1],channels='UV',**args)
         u=xvs.getU(uv)
         v=xvs.getV(uv)
     else:
-        if planes[1]:
+        if p1:
             u=NLM(u,rclip=ru,h=h[1],**args)
-        if planes[2]:
+        if p2:
             v=NLM(v,rclip=rv,h=h[2],**args)
     y,u,v=[core.std.ShufflePlanes(i,[0],vs.GRAY) for i in (y,u,v)]
     return core.std.ShufflePlanes([y,u,v],[0,0,0],vs.YUV)
@@ -1028,17 +1029,22 @@ def setparams(src,range=None,matrix=None,transfer=None,primaries=None,chromaloc=
 #just for fun
 #but impulse mode is more accurate than gaussian blur functions provided by tcanny and bilateral in my book, most likely the border handling stuff, i dunno (but much slower at very large stdev (but faster at small stdev (< 9 on my machine)))
 #impdr: impulse mode pre-downscale ratio, to tradeoff for some speed perhaps
-def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',impext=3,impdr=1,kd='bilinear',rsa1=9):
+def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],impext=3,impdr=1,kd='bilinear',rsa1=9):
     import warnings
     if stdev==None: stdev=sigma #lame alias approach
     sw,sh=src.width,src.height
+    p0,p1,p2=[i in planes for i in (0,1,2)]
+    isgray=src.format.color_family==vs.GRAY
+    if not (p0 and p1 and p2) and not isgray:
+        original=src
+        if p0 and not p1 and not p2:
+            src=xvs.getY(src)
     if mode=='resample': #by dnjulek at https://github.com/sekrit-twc/zimg/issues/186#issue-1462626153
         if stdev<1:
             warnings.warn('gaussianblurfmtc: resample mode will not behave normal with stdev < 1.')
         dw,dh=round(sw/stdev),round(sh/stdev)
         last=core.fmtc.resample(src,dw,dh,kernel=kd,css='444') if stdev>1 else src
         last=core.fmtc.resample(last,sw,sh,kernel='gauss',a1=rsa1,csp=src.format.replace(bits_per_sample=16),fv=-1,fh=-1)
-        return last
     elif mode=='impulse':
         import math
         import numpy as np
@@ -1046,15 +1052,18 @@ def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',impext=3,impdr=1,kd='
         if impdr<1: raise ValueError('impdr<1, don\'t do it bruh.')
         dw,dh=round(sw/impdr),round(sh/impdr)
         stdev/=impdr
-        is444=src.format.subsampling_w==src.format.subsampling_w==0
+        is444=src.format.subsampling_w==src.format.subsampling_h==0
         if not is444: dw,dh=round(dw/2)*2,round(dh/2)*2
         r=math.ceil(max(1,stdev)*impext)
         gauss_imp=scipy.stats.norm.pdf(np.linspace(-r,r,1+2*r,dtype=np.int_),0,stdev)
         last=core.fmtc.resample(src,dw,dh,kernel=kd) if impdr>1 else src
         last=core.fmtc.resample(last,sw,sh,kernel='impulse',fv=-1,fh=-1,impulse=gauss_imp,css=['420','444'][is444],kovrspl=[(1,2,2),1][is444])
-        return last
     else:
         raise ValueError(f'what do you mean "{mode}"?')
+    if not (p0 and p1 and p2) and not isgray:
+        cage=(original,last)
+        last=core.std.ShufflePlanes([cage[p0],cage[p1],cage[p2]],[0,1,2],vs.YUV)
+    return last
 #i haven't played this game, but...
 #https://granbluefantasy.jp/
 gbf=gaussianblurfmtc
