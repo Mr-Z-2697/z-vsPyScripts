@@ -1,4 +1,4 @@
-__version__=str(1698522408/2**31)
+__version__=str(1698846597/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -51,7 +51,7 @@ nnrs_mode_default = os.environ.get("nnrs_mode_default", "nnedi3")
 bm3d_mode_default = os.environ.get("bm3d_mode_default", "cpu")
 bm3d_extractor_exp_default = os.environ.get("bm3d_extractor_exp_default", 0)
 
-nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode=nnrs_mode_default,nns=3,nsize=3,qual=2,pscrn=1)
+nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode=nnrs_mode_default,nns=3,nsize=1,qual=2,pscrn=1)
 Nnrs=nnrs
 
 
@@ -799,7 +799,7 @@ bsbd=badlyscaledborderdetect
 
 #rescale and try to unfuck border, target on highly specific situation
 #ALWAYS DO TESTS BEFORE USE!
-def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,taps=3,nns=3,nsize=3,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,cuth=1,cutv=1,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
+def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,taps=3,nns=3,nsize=1,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,cuth=1,cutv=1,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
     if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
     srcw,srch=src.width,src.height
@@ -1279,7 +1279,7 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     else:
         raise ValueError("postfilter_descaled must be a function")
 
-    nsize=3 if args.get("nsize") is None else args.get("nsize")#keep behavior before
+    nsize=1 if args.get("nsize") is None else args.get("nsize")#keep behavior before
     nns=args.get("nns")
     qual=2 if args.get("qual") is None else args.get("qual")#keep behavior before
     etype=args.get("etype")
@@ -1384,7 +1384,7 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     else:
         raise ValueError("postfilter_descaled must be a function")
 
-    nsize=3 if args.get("nsize") is None else args.get("nsize")#keep behavior before
+    nsize=1 if args.get("nsize") is None else args.get("nsize")#keep behavior before
     nns=args.get("nns")
     qual=2 if args.get("qual") is None else args.get("qual")#keep behavior before
     etype=args.get("etype")
@@ -1555,7 +1555,7 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNod
     else:
         raise ValueError("postfilter_descaled must be a function")
 
-    nsize=3 if args.get("nsize") is None else args.get("nsize")
+    nsize=1 if args.get("nsize") is None else args.get("nsize")
     nns=args.get("nns")
     qual=2 if args.get("qual") is None else args.get("qual")
     etype=args.get("etype")
@@ -1636,7 +1636,7 @@ def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask
     else:
         raise ValueError("postfilter_descaled must be a function")
 
-    nsize=3 if args.get("nsize") is None else args.get("nsize")
+    nsize=1 if args.get("nsize") is None else args.get("nsize")
     nns=args.get("nns")
     qual=2 if args.get("qual") is None else args.get("qual")
     etype=args.get("etype")
