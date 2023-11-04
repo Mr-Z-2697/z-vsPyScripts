@@ -1,4 +1,4 @@
-__version__=str(1699127565/2**31)
+__version__=str(1699131090/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -871,7 +871,9 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_
 
     miss_mask=core.akarin.Expr(luma,f"X {srcw-border-1} > Y {border} < and X {border} < Y {srch-border-1} > and or  65535 0 ?")
     ###
-    if callable(custom_nnedi3down):
+    if show=='border':
+        luma_rescale=luma
+    elif callable(custom_nnedi3down):
         luma_rescale=Nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1)
         luma_rescale=custom_nnedi3down(luma_rescale,srcw,srch).fmtc.bitdepth(bits=16)
     else:
