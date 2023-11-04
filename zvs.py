@@ -1,4 +1,4 @@
-__version__=str(1698846597/2**31)
+__version__=str(1699127565/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -133,7 +133,7 @@ mvinrm: apply recalculate on mvs from "mvin"
 mvupd: only with "mvinrm", decide whether to modify the input dict
 lf: provide your own func for limit (does not override the "limit" arg of mdegrain) eg: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20) or a number represents "thr" in mvf.LimitFilter
 '''
-def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,lf=None,**args):
+def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,lf=None,sargs={},aargs={},rargs={},**args):
     if resize_pad:
         if isinstance(resize_pad,bool):
             src=rpclip(src,blksize)
@@ -180,13 +180,13 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
             if refinemotion and len(supin)==3:
                 sup3=supin[2]
 
-    sup=core.mv.Super(pref,hpad=mv_pad[0],vpad=mv_pad[1],sharp=sharp,rfilter=rfilter,pel=pel) if sup==0 else sup
-    sup2=core.mv.Super(last,hpad=mv_pad[0],vpad=mv_pad[1],sharp=sharp,levels=1,pel=pel) if sup2==0 else sup2
+    sup=core.mv.Super(pref,hpad=mv_pad[0],vpad=mv_pad[1],sharp=sharp,rfilter=rfilter,pel=pel,**sargs) if sup==0 else sup
+    sup2=core.mv.Super(last,hpad=mv_pad[0],vpad=mv_pad[1],sharp=sharp,levels=1,pel=pel,**sargs) if sup2==0 else sup2
     if refinemotion:
         if isinstance(refinemotion,vs.VideoNode): #i can't remember why i did this really, but it's harmless just leave it
             sup3=refinemotion
         else:
-            sup3=core.mv.Super(last,hpad=mv_pad[2],vpad=mv_pad[3],sharp=sharp,levels=1,pel=rmpel) if sup3==0 else sup3
+            sup3=core.mv.Super(last,hpad=mv_pad[2],vpad=mv_pad[3],sharp=sharp,levels=1,pel=rmpel,**sargs) if sup3==0 else sup3
 
     mvfw,mvbw=[],[]
     if mvd_in:
@@ -195,8 +195,8 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
         if tr>mvin['tr']:raise ValueError
         if mvinrm:
             for i in range(tr):
-                _fw=core.mv.Recalculate(sup3,_mvfw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct)
-                _bw=core.mv.Recalculate(sup3,_mvbw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct)
+                _fw=core.mv.Recalculate(sup3,_mvfw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
+                _bw=core.mv.Recalculate(sup3,_mvbw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
                 mvfw.append(_fw)
                 mvbw.append(_bw)
                 if mvupd:
@@ -207,11 +207,11 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
             mvbw=_mvbw
     else:
         for i in range(1,tr+1):
-            _fw=core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv,dct=dct)
-            _bw=core.mv.Analyse(sup,isb=True,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv,dct=dct)
+            _fw=core.mv.Analyse(sup,isb=False,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv,dct=dct,**aargs)
+            _bw=core.mv.Analyse(sup,isb=True,delta=i,blksize=blksize,overlap=overlap,truemotion=truemotion,chroma=chromamv,dct=dct,**aargs)
             if refinemotion:
-                _fw=core.mv.Recalculate(sup3,_fw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct)
-                _bw=core.mv.Recalculate(sup3,_bw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct)
+                _fw=core.mv.Recalculate(sup3,_fw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
+                _bw=core.mv.Recalculate(sup3,_bw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
             mvfw.append(_fw)
             mvbw.append(_bw)
 
