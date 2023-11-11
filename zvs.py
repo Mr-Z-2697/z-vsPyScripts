@@ -1,4 +1,4 @@
-__version__=str(1699606849/2**31)
+__version__=str(1699730270/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1031,11 +1031,13 @@ def setparams(src,range=None,matrix=None,transfer=None,primaries=None,chromaloc=
 #just for fun
 #but impulse mode is more accurate than gaussian blur functions provided by tcanny and bilateral in my book, most likely the border handling stuff, i dunno (but much slower at very large stdev (but faster at small stdev (< 9 on my machine)))
 #impdr: impulse mode pre-downscale ratio, to tradeoff for some speed perhaps
-def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None,impext=3,impdr=1,kd='bilinear',rsa1=9,sci=False):
+def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None,impext=3,impdr=1,kd='bilinear',rsa1=9,sci=False,dir='hv'):
     import warnings
     if stdev==None: stdev=sigma #lame alias approach
     sw,sh=src.width,src.height
     p0,p1,p2=[i in planes for i in (0,1,2)]
+    hb,vb='h' in dir,'v' in dir
+    sep=dir[1]=='+'
     isgray=src.format.color_family==vs.GRAY
     if not (p0 and p1 and p2) and not isgray:
         original=src
@@ -1044,13 +1046,13 @@ def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None
     if mode=='resample': #by dnjulek at https://github.com/sekrit-twc/zimg/issues/186#issue-1462626153
         if stdev<1:
             warnings.warn('gaussianblurfmtc: resample mode will not behave normal with stdev < 1.')
-        dw,dh=round(sw/stdev),round(sh/stdev)
+        dw,dh=round(sw/stdev) if hb else sw,round(sh/stdev) if vb else sh
         last=core.fmtc.resample(src,dw,dh,kernel=kd,css='444') if stdev>1 else src
         last=core.fmtc.resample(last,sw,sh,kernel='gauss',a1=rsa1,csp=src.format.replace(bits_per_sample=16),fv=-1,fh=-1)
     elif mode=='impulse':
         import math
         if impdr<1: raise ValueError('impdr<1, don\'t do it bruh.')
-        dw,dh=round(sw/impdr),round(sh/impdr)
+        dw,dh=round(sw/impdr) if hb else sw,round(sh/impdr) if vb else sh
         stdev/=impdr
         is444=src.format.subsampling_w==src.format.subsampling_h==0
         if not is444: dw,dh=round(dw/2)*2,round(dh/2)*2
@@ -1064,7 +1066,11 @@ def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None
             gauss_imp=[_gd(i) for i in range(r+1)]
             gauss_imp=gauss_imp[::-1]+gauss_imp[1:]
         last=core.fmtc.resample(src,dw,dh,kernel=kd) if impdr>1 else src
-        last=core.fmtc.resample(last,sw,sh,kernel='impulse',fv=-1,fh=-1,impulse=gauss_imp,css=['420','444'][is444],kovrspl=[(1,2,2),1][is444])
+        if sep:
+            last=core.fmtc.resample(last,sw,sh,kernel='impulse',fv=(-1)**vb,fh=1,impulse=gauss_imp,css=['420','444'][is444],kovrspl=[(1,2,2),1][is444])
+            last=core.fmtc.resample(last,sw,sh,kernel='impulse',fv=1,fh=(-1)**hb,impulse=gauss_imp,css=['420','444'][is444],kovrspl=[(1,2,2),1][is444])
+        else:
+            last=core.fmtc.resample(last,sw,sh,kernel='impulse',fv=(-1)**vb,fh=(-1)**hb,impulse=gauss_imp,css=['420','444'][is444],kovrspl=[(1,2,2),1][is444])
     else:
         raise ValueError(f'what do you mean "{mode}"?')
     if not (p0 and p1 and p2) and not isgray:
