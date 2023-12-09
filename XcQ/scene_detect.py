@@ -35,7 +35,7 @@ import functools
 import onnxruntime as ort
 core = vs.core
 
-
+# somehow "+rife" models crash mpv but not vapoursynth filter for directshow, happens to me at least, so please use other models when use in mpv.
 def scene_detect(
     clip: vs.VideoNode,
     onnx_path: str = r"D:\Misc\scd-models\sc_efficientformerv2_s0+rife46_84119_224_6chIn_softmaxOut_fp16_op17_sim.onnx",
