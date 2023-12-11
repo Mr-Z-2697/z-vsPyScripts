@@ -1,4 +1,4 @@
-__version__=str(1701621777/2**31)
+__version__=str(1702308369/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1081,6 +1081,37 @@ def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None
 #i haven't played this game, but...
 #https://granbluefantasy.jp/
 gbf=gaussianblurfmtc
+
+#curved/cursed diff
+def cdif(clipa,clipb,merge=False,p=16384,mode='sine'):
+    import math
+    import numpy as np
+    clipa=clipa.fmtc.bitdepth(bits=16)
+    clipb=clipb.fmtc.bitdepth(bits=16)
+    if not merge:
+        sign=core.std.Expr([clipa,clipb],'x y < 65535 0 ?')
+        difabs=core.std.Expr([clipa,clipb],'x y - abs')
+        if mode=='sine':
+            lut=[round(math.sin(math.pi/2*(i-p)/(65535-p))*(32767-p)+p) if i>p else i for i in range(65536)]
+        elif mode=='linear':
+            lut=[round((i-p)/(65535-p)*(32767-p)+p) if i>p else i for i in range(65536)]
+        lut=np.clip(lut,0,65535)
+        difabs_c=core.std.Lut(difabs,lut=lut)
+        dif=core.std.Expr([difabs_c,sign],'y 0 > 32768 x - 32768 x + ?')
+        return dif
+    else:
+        sign=core.std.Expr(clipb,'x 32768 < 65535 0 ?')
+        difabs=core.std.Expr(clipb,'x 32768 - abs')
+        if mode=='sine':
+            lut=[round(math.asin((i-p)/(32767-p))/(math.pi/2)*(65535-p))+p if i>p else i for i in range(32768)]+[0]*32768
+        elif mode=='linear':
+            lut=[round((i-p)/(32767-p)*(65535-p)+p) if i>p else i for i in range(32768)]+[0]*32768
+        lut=np.clip(lut,0,65535)
+        difabs_c=core.std.Lut(difabs,lut=lut)
+        merged=core.std.Expr([clipa,difabs_c,sign],'z 0 > x y - x y + ?')
+        return merged
+Corps_Diplomatique_of_Interstellar_Ferrets=cdif
+#what?
 
 
 ########################################################
