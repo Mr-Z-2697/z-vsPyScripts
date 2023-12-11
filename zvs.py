@@ -35,6 +35,7 @@ functions:
 - go444keepuv
 - setrange, setmatrix, settransfer, setprimaries, setchromaloc, setparams
 - gaussianblurfmtc (gbf for short)
+- cdif
 '''
 
 try:
