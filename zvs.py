@@ -1,4 +1,4 @@
-__version__=str(1702309047/2**31)
+__version__=str(1702310044/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1096,19 +1096,18 @@ def cdif(clipa,clipb,merge=False,p=16384,mode='sine'):
         elif mode=='linear':
             lut=[round((i-p)/(65535-p)*(32767-p)+p) if i>p else i for i in range(65536)]
         lut=np.clip(lut,0,65535)
-        difabs_c=core.std.Lut(difabs,lut=lut)
-        dif=core.std.Expr([difabs_c,sign],'y 0 > 32768 x - 32768 x + ?')
+        difabs=core.std.Lut(difabs,lut=lut)
+        dif=core.std.Expr([difabs,sign],'y 0 > 32768 x - 32768 x + ?')
         return dif
     else:
-        sign=core.std.Expr(clipb,'x 32768 < 65535 0 ?')
         difabs=core.std.Expr(clipb,'x 32768 - abs')
         if mode=='sine':
             lut=[round(math.asin((i-p)/(32767-p))/(math.pi/2)*(65535-p))+p if i>p else i for i in range(32768)]+[0]*32768
         elif mode=='linear':
             lut=[round((i-p)/(32767-p)*(65535-p)+p) if i>p else i for i in range(32768)]+[0]*32768
         lut=np.clip(lut,0,65535)
-        difabs_c=core.std.Lut(difabs,lut=lut)
-        merged=core.std.Expr([clipa,difabs_c,sign],'z 0 > x y - x y + ?')
+        difabs=core.std.Lut(difabs,lut=lut)
+        merged=core.std.Expr([clipa,difabs,clipb],'z 32768 < x y - x y + ?')
         return merged
 Corps_Diplomatique_of_Interstellar_Ferrets=cdif
 #what?
