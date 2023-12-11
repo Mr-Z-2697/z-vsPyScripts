@@ -1,4 +1,4 @@
-__version__=str(1702308369/2**31)
+__version__=str(1702309047/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1086,8 +1086,8 @@ gbf=gaussianblurfmtc
 def cdif(clipa,clipb,merge=False,p=16384,mode='sine'):
     import math
     import numpy as np
-    clipa=clipa.fmtc.bitdepth(bits=16)
-    clipb=clipb.fmtc.bitdepth(bits=16)
+    if not clipa.format.bits_per_sample==16: clipa=clipa.fmtc.bitdepth(bits=16)
+    if not clipb.format.bits_per_sample==16: clipb=clipb.fmtc.bitdepth(bits=16)
     if not merge:
         sign=core.std.Expr([clipa,clipb],'x y < 65535 0 ?')
         difabs=core.std.Expr([clipa,clipb],'x y - abs')
