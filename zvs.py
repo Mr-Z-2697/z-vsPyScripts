@@ -1,4 +1,4 @@
-__version__=str(1702310044/2**31)
+__version__=str(1703055894/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -510,11 +510,11 @@ def n3pv(*args,**kwargs):
             _w,_h=clip.width*scale,clip.height*scale
             if bypass:
                 _tmpclp=core.resize.Bicubic(clip,_w,_h)
-                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i],full=fulls[i]).sub.Subtitle('clip%d'%i)
+                _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i],full=fulls[i]).sub.Subtitle(f'clip{i}')
             elif madvr:
-                _tmpclp=core.madvr.Process(clip,[f'upscale({_w},{_h},{madvr_algo})',f'setOutputFormat(rgbPC,{depth})'])
+                _tmpclp=core.madvr.Process(clip,[f'upscale({_w},{_h},{madvr_algo})',f'setOutputFormat(rgbPC,{depth})']).sub.Subtitle(f'clip{i}')
             else:
-                _tmpclp=Nnrs.nnedi3_resample(clip,_w,_h,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i],fulls=fulls[i]).sub.Subtitle('clip%d'%i)
+                _tmpclp=Nnrs.nnedi3_resample(clip,_w,_h,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i],fulls=fulls[i]).sub.Subtitle(f'clip{i}')
             last.append(_tmpclp)
     return last[0] if len(last)==1 else core.std.Interleave(last) if int_ else last
 
