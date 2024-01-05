@@ -1,4 +1,4 @@
-__version__=str(1703055894/2**31)
+__version__=str(1704476895/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1108,7 +1108,8 @@ def cdif(clipa,clipb,merge=False,p=16384,mode='sine'):
             lut=[round((i-p)/(32767-p)*(65535-p)+p) if i>p else i for i in range(32768)]+[0]*32768
         lut=np.clip(lut,0,65535)
         difabs=core.std.Lut(difabs,lut=lut)
-        merged=core.std.Expr([clipa,difabs,clipb],'z 32768 < x y - x y + ?')
+        asdf='-+' if merge>0 else '+-'
+        merged=core.std.Expr([clipa,difabs,clipb],f'z 32768 < x y {asdf[0]} x y {asdf[1]} ?')
         return merged
 Corps_Diplomatique_of_Interstellar_Ferrets=cdif
 #what?
