@@ -1,4 +1,4 @@
-__version__=str(1704476895/2**31)
+__version__=str(1704480112/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -132,9 +132,10 @@ mvout_sup: output super clips as well, benefit is small and may cause unintended
 mvin: take a dict of mvs, use them to degrain, if super clips present, they will be used too
 mvinrm: apply recalculate on mvs from "mvin"
 mvupd: only with "mvinrm", decide whether to modify the input dict
+limit: passed to mdegrain as before (it was included in **args ;P) if None or [0-1<<bitdepth-1], auto limit plagiarized from MCTemporalDenoise if negative value is specified.
 lf: provide your own func for limit (does not override the "limit" arg of mdegrain) eg: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20) or a number represents "thr" in mvf.LimitFilter
 '''
-def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,lf=None,sargs={},aargs={},rargs={},**args):
+def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,limit=None,lf=None,sargs={},aargs={},rargs={},alim_ref=None,alim_cdif=False,**args):
     if resize_pad:
         if isinstance(resize_pad,bool):
             src=rpclip(src,blksize)
@@ -148,12 +149,17 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
     if thsadc==None:
         thsadc=thsad//2
     last=src
-    if pref!=None:
-        pass
-    elif not chromamv:
-        pref=core.resize.Bicubic(last,range_in_s='limited',range_s='full')
-    else:
+    if pref==None:
         pref=last
+    if limit!=None and limit<=-1:
+        limit=None
+        alim=True
+        if alim_ref==None:
+            alim_ref=pref
+    else:
+        alim=False
+    if not chromamv:
+        pref=core.resize.Bicubic(pref,range_in_s='limited',range_s='full')
     if tr==None:
         if not mvd_in:
             tr=2
@@ -223,7 +229,14 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
             mvd['sup']=[sup,sup2,sup3] if refinemotion else [sup,sup2]
         return mvd
 
-    last=eval(f'core.mv.Degrain{tr}(last,sup2,{mv_list_string},thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2,**args)')
+    last=eval(f'core.mv.Degrain{tr}(last,sup2,{mv_list_string},thsad=thsad,thsadc=thsadc,thscd1=thscd1,thscd2=thscd2,limit=limit,**args)')
+    if alim:
+        neutral=1 << (src.format.bits_per_sample-1)
+        pdiff=core.std.MakeDiff(src,alim_ref) if not alim_cdif else cdif(src,alim_ref)
+        mdiff=core.std.MakeDiff(src,last) if not alim_cdif else cdif(src,last)
+        expr=f'x {neutral} - abs y {neutral} - abs < x y ?'
+        ddiff=core.std.Expr([pdiff,mdiff],expr=[expr])
+        last=core.std.MakeDiff(src,ddiff) if not alim_cdif else cdif(src,ddiff,merge=-1)
     if callable(lf):
         last=lf(last,src)
     elif isinstance(lf,(int,float)):
