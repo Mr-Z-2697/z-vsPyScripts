@@ -33,37 +33,51 @@ import numpy as np
 import vapoursynth as vs
 import functools
 import onnxruntime as ort
+from threading import Lock
 core = vs.core
 
 # somehow "+rife" models in combination with dml provider crash mpv after couple of seeking but not vapoursynth filter for directshow, happens to me at least, so please use other models or providers when use in mpv.
 def scene_detect(
     clip: vs.VideoNode,
-    onnx_path: str = r"D:\Misc\scd-models\sc_efficientformerv2_s0+rife46_84119_224_6chIn_softmaxOut_fp16_op17_sim.onnx",
+    onnx_path: str = r"D:\Misc\scd-models\sc_efficientformerv2_s0+rife46_flow_84119_224_CHW_6ch_clamp_softmax_op17_fp16.onnx",
     thresh: float = 0.98,
     fp16: bool = True,
     onnx_res: int = 224,
     ort_provider='Dml',
     resizer=None,
-    rev=1,
+    rev=2,
+    num_sessions=1,
 ) -> vs.VideoNode:
 
-    sess = ort.InferenceSession(
-        onnx_path,
-        providers=[f"{ort_provider}ExecutionProvider"],
-    )
+    sessions = [
+        ort.InferenceSession(
+            onnx_path,
+            providers=[f"{ort_provider}ExecutionProvider"],
+        )
+        for _ in range(num_sessions)
+    ]
+    sessions_lock = [Lock() for _ in range(num_sessions)]
+
+    index=-1
+    index_lock=Lock()
 
     def execute(n,f):
+        nonlocal index
+        with index_lock:
+            index = (index + 1) % num_sessions
+            local_index = index
         fout=f[0].copy()
         I0 = frame_to_tensor(f[1])
         I1 = frame_to_tensor(f[2])
+        ort_session = sessions[local_index]
         if rev==1:
             I0 = np.expand_dims(I0, 0)
             I1 = np.expand_dims(I1, 0)
             in_sess = np.concatenate([I0, I1], axis=1)
-            result = sess.run(None, {"input": in_sess})[0]
+            result = ort_session.run(None, {"input": in_sess})[0]
         elif rev==2:
             in_sess = np.concatenate([I0, I1], axis=0)
-            result = sess.run(None, {"input": in_sess})[0][0][0]
+            result = ort_session.run(None, {"input": in_sess})[0][0][0]
 
         if result > thresh:
             fout.props._SceneChangeNext=1
