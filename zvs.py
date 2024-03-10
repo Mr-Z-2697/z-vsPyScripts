@@ -1,4 +1,4 @@
-__version__=str(1704480112/2**31)
+__version__=str(1710062742/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
