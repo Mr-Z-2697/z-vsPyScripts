@@ -36,6 +36,7 @@ functions:
 - setrange, setmatrix, settransfer, setprimaries, setchromaloc, setparams
 - gaussianblurfmtc (gbf for short)
 - cdif
+- alpha2clip
 '''
 
 try:
@@ -1126,6 +1127,12 @@ def cdif(clipa,clipb,merge=False,p=16384,mode='sine'):
         return merged
 Corps_Diplomatique_of_Interstellar_Ferrets=cdif
 #what?
+
+
+def alpha2clip(src):
+    fmt=src.format.replace(color_family=vs.GRAY)
+    blk=core.std.BlankClip(src,format=fmt)
+    return core.std.ModifyFrame(blk,src,lambda n,f:f.props._Alpha)
 
 
 ########################################################
