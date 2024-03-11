@@ -1,4 +1,4 @@
-__version__=str(1710062742/2**31)
+__version__=str(1710140667/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1130,9 +1130,7 @@ Corps_Diplomatique_of_Interstellar_Ferrets=cdif
 
 
 def alpha2clip(src):
-    fmt=src.format.replace(color_family=vs.GRAY)
-    blk=core.std.BlankClip(src,format=fmt)
-    return core.std.ModifyFrame(blk,src,lambda n,f:f.props._Alpha)
+    return core.std.PropToClip(src,'_Alpha')
 
 
 ########################################################
