@@ -1,4 +1,4 @@
-__version__=str(1710140667/2**31)
+__version__=str(1710147570/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1098,7 +1098,7 @@ def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None
 gbf=gaussianblurfmtc
 
 #curved/cursed diff
-def cdif(clipa,clipb,merge=False,p=16384,mode='sine'):
+def cdif(clipa,clipb,merge=False,p=16384,mode='sine',lb=10):
     import math
     import numpy as np
     if not clipa.format.bits_per_sample==16: clipa=clipa.fmtc.bitdepth(bits=16)
@@ -1110,6 +1110,8 @@ def cdif(clipa,clipb,merge=False,p=16384,mode='sine'):
             lut=[round(math.sin(math.pi/2*(i-p)/(65535-p))*(32767-p)+p) if i>p else i for i in range(65536)]
         elif mode=='linear':
             lut=[round((i-p)/(65535-p)*(32767-p)+p) if i>p else i for i in range(65536)]
+        elif mode=='log':
+            lut=[round(math.log((i-p)/(65535-p)*(lb-1)+1,lb)*(32767-p)+p) if i>p else i for i in range(65536)]
         lut=np.clip(lut,0,65535)
         difabs=core.std.Lut(difabs,lut=lut)
         dif=core.std.Expr([difabs,sign],'y 0 > 32768 x - 32768 x + ?')
@@ -1120,6 +1122,8 @@ def cdif(clipa,clipb,merge=False,p=16384,mode='sine'):
             lut=[round(math.asin((i-p)/(32767-p))/(math.pi/2)*(65535-p))+p if i>p else i for i in range(32768)]+[0]*32768
         elif mode=='linear':
             lut=[round((i-p)/(32767-p)*(65535-p)+p) if i>p else i for i in range(32768)]+[0]*32768
+        elif mode=='log':
+            lut=[round((math.pow(lb,(i-p)/(32767-p))-1)/(lb-1)*(65535-p))+p if i>p else i for i in range(32768)]+[0]*32768
         lut=np.clip(lut,0,65535)
         difabs=core.std.Lut(difabs,lut=lut)
         asdf='-+' if merge>0 else '+-'
