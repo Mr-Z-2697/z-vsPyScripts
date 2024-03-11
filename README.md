@@ -49,7 +49,7 @@ core.max_cache_size=xxx #change these values can work inside vsenv.py but like i
 -   [BM3D](https://github.com/HomeOfVapourSynthEvolution/VapourSynth-BM3D) (only VAggregate is used for not-v2 bm3dcuda)
 -   *[FFTW3](http://www.fftw.org/install/windows.html)* (dependency of some plugins such as the one above)
 -   [mvtools](https://github.com/dubhater/vapoursynth-mvtools) (for degrain4-6 and some speed up use [my build](https://github.com/Mr-Z-2697/vapoursynth-mvtools/releases) before they make new release)
--   [descale](https://github.com/Irrational-Encoding-Wizardry/descale)
+-   [descale](https://github.com/Jaded-Encoding-Thaumaturgy/vapoursynth-descale)
 -   [nnedi3cl](https://github.com/HomeOfVapourSynthEvolution/VapourSynth-NNEDI3CL)/[znedi3](https://github.com/sekrit-twc/znedi3)/[nnedi3](https://github.com/dubhater/vapoursynth-nnedi3)
 -   [fmtconv](https://gitlab.com/EleonoreMizo/fmtconv)
 -   [neo_f3kdb](https://github.com/HomeOfAviSynthPlusEvolution/neo_f3kdb)/[f3kdb](https://github.com/SAPikachu/flash3kyuu_deband)
