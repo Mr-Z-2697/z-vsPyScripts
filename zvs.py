@@ -1,4 +1,4 @@
-__version__=str(1710147570/2**31)
+__version__=str(1710151860/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1132,6 +1132,26 @@ def cdif(clipa,clipb,merge=False,p=16384,mode='sine',lb=10):
 Corps_Diplomatique_of_Interstellar_Ferrets=cdif
 #what?
 
+def plotcdif(merge=False,p=16384,mode='sine',lb=10):
+    import math
+    import matplotlib.pyplot as plt
+    if not merge:
+        if mode=='sine':
+            lut=[round(math.sin(math.pi/2*(i-p)/(65535-p))*(32767-p)+p) if i>p else i for i in range(65536)]
+        elif mode=='linear':
+            lut=[round((i-p)/(65535-p)*(32767-p)+p) if i>p else i for i in range(65536)]
+        elif mode=='log':
+            lut=[round(math.log((i-p)/(65535-p)*(lb-1)+1,lb)*(32767-p)+p) if i>p else i for i in range(65536)]
+    else:
+        if mode=='sine':
+            lut=[round(math.asin((i-p)/(32767-p))/(math.pi/2)*(65535-p))+p if i>p else i for i in range(32768)]
+        elif mode=='linear':
+            lut=[round((i-p)/(32767-p)*(65535-p)+p) if i>p else i for i in range(32768)]
+        elif mode=='log':
+            lut=[round((math.pow(lb,(i-p)/(32767-p))-1)/(lb-1)*(65535-p))+p if i>p else i for i in range(32768)]
+    plt.plot(lut)
+    plt.show()
+    
 
 def alpha2clip(src):
     return core.std.PropToClip(src,'_Alpha')
