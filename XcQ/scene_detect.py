@@ -1,4 +1,7 @@
-'''https://github.com/styler00dollar/VSGAN-tensorrt-docker/blob/4c516ceedcac725bc5ded38406f492463494d94c/src/scene_detect.py
+'''https://github.com/styler00dollar/VSGAN-tensorrt-docker/blob/main/src/scene_detect.py
+Model Download: https://github.com/styler00dollar/VSGAN-tensorrt-docker/releases/tag/models
+(look for onnx models start with "sc_", "tf_", "maxxvitv2", "davit" and "autoshot")
+
 BSD 3-Clause License
 
 Copyright (c) 2022, styler00dollar aka sudo rm -rf / --no-preserve-root
@@ -29,6 +32,7 @@ CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.'''
 
+import os
 import numpy as np
 import vapoursynth as vs
 import functools
@@ -41,18 +45,69 @@ def scene_detect(
     clip: vs.VideoNode,
     onnx_path: str = r"D:\Misc\scd-models\sc_efficientformerv2_s0+rife46_flow_84119_224_CHW_6ch_clamp_softmax_op17_fp16.onnx",
     thresh: float = 0.98,
-    fp16: bool = True,
-    onnx_res: int = 224,
+    fp16=None,
+    onnx_res=None,
+    onnx_type=None,
     ort_provider='Dml',
     resizer=None,
     rev=2,
+    ssim_clip=None,
+    ssim_thresh=0.98,
     num_sessions=1,
+    ort_log_level=3,
 ) -> vs.VideoNode:
+    
+    ort.set_default_logger_severity(ort_log_level)
+    
+    onnx_name=os.path.split(onnx_path)[-1]
+    onnx_name=os.path.splitext(onnx_name)[0]
+    onnx_name_split=onnx_name.split('_')
+
+    if fp16 is None:
+        if 'fp16' in onnx_name_split:
+            fp16=True
+        else:
+            fp16=False
+
+    if onnx_res is None:
+        if '256' in onnx_name_split or '256px' in onnx_name_split:
+            onnx_res=[256,256]
+        elif '224' in onnx_name_split or '224px' in onnx_name_split:
+            onnx_res=[224,224]
+        elif 'autoshot' in onnx_name_split or '48x27' in onnx_name_split:
+            onnx_res=[48,27]
+    elif isinstance(onnx_res,int):
+        onnx_res=[onnx_res,onnx_res]
+
+    if onnx_type is None:
+        if 'autoshot' in onnx_name_split or '5img' in onnx_name_split:
+            onnx_type='5img'
+        else:
+            onnx_type='2img'
+
+    options = {}
+    '''
+    I can't test these options because I can't get TRT provider to work in my Windows system.
+    The "trt_engine_cache_path" looks definitely gonna cause some trouble (in Windows, prehaps Linux as well, as the upstream is intended for docker).
+    '''
+    if ort_provider=='Tensorrt':
+        # https://onnxruntime.ai/docs/execution-providers/TensorRT-ExecutionProvider.html
+        options["device_id"] = 0
+        options["trt_engine_cache_enable"] = True
+        options["trt_timing_cache_enable"] = (
+            True  # Using TensorRT timing cache to accelerate engine build time on a device with the same compute capability
+        )
+        options["trt_engine_cache_path"] = (
+            "/workspace/tensorrt/"
+        )
+        options["trt_fp16_enable"] = fp16
+        options["trt_max_workspace_size"] = 7000000000  # ~7gb
+        options["trt_builder_optimization_level"] = 5
 
     sessions = [
         ort.InferenceSession(
             onnx_path,
-            providers=[f"{ort_provider}ExecutionProvider"],
+            providers=[(f"{ort_provider}ExecutionProvider",options)],
         )
         for _ in range(num_sessions)
     ]
@@ -66,6 +121,12 @@ def scene_detect(
         with index_lock:
             index = (index + 1) % num_sessions
             local_index = index
+        nonlocal ssim_clip
+        nonlocal ssim_thresh
+        if ssim_clip:
+            ssim_eval = f[3].props.get("float_ssim")
+            if ssim_clip and ssim_eval > ssim_thresh:
+                return f[0].copy()
         fout=f[0].copy()
         I0 = frame_to_tensor(f[1])
         I1 = frame_to_tensor(f[2])
@@ -76,8 +137,18 @@ def scene_detect(
             in_sess = np.concatenate([I0, I1], axis=1)
             result = ort_session.run(None, {"input": in_sess})[0]
         elif rev==2:
-            in_sess = np.concatenate([I0, I1], axis=0)
-            result = ort_session.run(None, {"input": in_sess})[0][0][0]
+            if onnx_type=='2img':
+                in_sess = np.concatenate([I0, I1], axis=0)
+            elif onnx_type=='5img':
+                I2 = frame_to_tensor(f[3])
+                I3 = frame_to_tensor(f[4])
+                I4 = frame_to_tensor(f[5])
+                in_sess = np.stack([I0, I1, I2, I3, I4], axis=1)
+            result = ort_session.run(None, {"input": in_sess})[0][0]
+            if onnx_type=='2img':
+                result=result[0]
+            elif onnx_type=='5img':
+                result=result[2]
 
         if result > thresh:
             fout.props._SceneChangeNext=1
@@ -85,7 +156,31 @@ def scene_detect(
             fout.props._SceneChangeNext=0
         fout.props._SceneChangeMetrics=float(result)
         return fout
+    
     clip_down=prepare_clip(clip,onnx_res=onnx_res,fp16=fp16,resizer=resizer)
+    if onnx_type == "5img":
+        shift_up2 = clip_down.std.DeleteFrames(frames=[0, 1]) + core.std.BlankClip(
+            clip_down, length=2
+        )
+        shift_up1 = clip_down.std.DeleteFrames(frames=[0]) + core.std.BlankClip(
+            clip_down, length=1
+        )
+
+        shift_down1 = core.std.BlankClip(clip_down, length=1) + core.std.BlankClip(
+            clip_down, length=1
+        )
+        shift_down2 = core.std.BlankClip(clip_down, length=2) + core.std.BlankClip(
+            clip_down, length=2
+        )
+
+        return core.std.ModifyFrame(
+            clip,
+            (clip, shift_down2, shift_down1, clip_down, shift_up1, shift_up2),
+            execute,
+        )
+
+    if ssim_clip:
+        return core.std.ModifyFrame(clip,(clip,clip_down,clip_down[1:],ssim_clip),execute)
     return core.std.ModifyFrame(clip,(clip,clip_down,clip_down[1:]),execute)
 
 
@@ -112,10 +207,10 @@ def prepare_clip(clip,onnx_res,fp16,resizer):
     target_fmt=[vs.RGBS,vs.RGBH][fp16]
     resizer=functools.partial(core.resize.Bicubic,filter_param_a=-0.3,filter_param_b=0.15) if resizer is None else resizer
     resizer=functools.partial(resizer,format=target_fmt)
-    if clip.format.id==target_fmt and clip.width==clip.height==onnx_res:
+    if clip.format.id==target_fmt and clip.width==onnx_res[0] and clip.height==onnx_res[1]:
         return clip
     if col_fam==vs.RGB:
-        return resizer(clip,onnx_res,onnx_res)
+        return resizer(clip,onnx_res[0],onnx_res[1])
     else:
         matrix=clip.get_frame(0).props.get("_Matrix")
         if matrix is None or matrix==2:
@@ -123,4 +218,4 @@ def prepare_clip(clip,onnx_res,fp16,resizer):
                 matrix=1
             else:
                 matrix=5
-        return resizer(clip,onnx_res,onnx_res,matrix_in=matrix)
+        return resizer(clip,onnx_res[0],onnx_res[1],matrix_in=matrix)
