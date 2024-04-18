@@ -50,7 +50,7 @@ def scene_detect(
     onnx_type=None,
     ort_provider='Dml',
     resizer=None,
-    rev=2,
+    model_rev=None,
     ssim_clip=None,
     ssim_thresh=0.98,
     num_sessions=1,
@@ -84,6 +84,12 @@ def scene_detect(
             onnx_type='5img'
         else:
             onnx_type='2img'
+
+    if model_rev is None:
+        if 'softmaxOut' in onnx_name_split:
+            model_rev=1
+        else:
+            model_rev=2
 
     options = {}
     '''
@@ -131,12 +137,12 @@ def scene_detect(
         I0 = frame_to_tensor(f[1])
         I1 = frame_to_tensor(f[2])
         ort_session = sessions[local_index]
-        if rev==1:
+        if model_rev==1:
             I0 = np.expand_dims(I0, 0)
             I1 = np.expand_dims(I1, 0)
             in_sess = np.concatenate([I0, I1], axis=1)
             result = ort_session.run(None, {"input": in_sess})[0]
-        elif rev==2:
+        elif model_rev==2:
             if onnx_type=='2img':
                 in_sess = np.concatenate([I0, I1], axis=0)
             elif onnx_type=='5img':
