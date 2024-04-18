@@ -43,7 +43,7 @@ core = vs.core
 # somehow "+rife" models in combination with dml provider crash mpv after couple of seeking but not vapoursynth filter for directshow, happens to me at least, so please use other models or providers when use in mpv.
 def scene_detect(
     clip: vs.VideoNode,
-    onnx_path: str = r"D:\Misc\scd-models\sc_efficientformerv2_s0+rife46_flow_84119_224_CHW_6ch_clamp_softmax_op17_fp16.onnx",
+    onnx_path: str = r"D:\Misc\scd-models\maxxvitv2_nano_rw_256.sw_in1k_256px_b100_30k_coloraug0.4_6ch_clamp_softmax_fp16_op17_onnxslim.onnx",
     thresh: float = 0.98,
     fp16=None,
     onnx_res=None,
