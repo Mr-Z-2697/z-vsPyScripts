@@ -2,6 +2,10 @@
 Model Download: https://github.com/styler00dollar/VSGAN-tensorrt-docker/releases/tag/models
 (look for onnx models start with "sc_", "tf_", "maxxvitv2", "davit" and "autoshot")
 
+USAGE:
+import scene_detect as scd
+clip=scd.scene_detect(clip,[model path, [other parameters]])
+
 BSD 3-Clause License
 
 Copyright (c) 2022, styler00dollar aka sudo rm -rf / --no-preserve-root
@@ -40,7 +44,6 @@ import onnxruntime as ort
 from threading import Lock
 core = vs.core
 
-# somehow "+rife" models in combination with dml provider crash mpv after couple of seeking but not vapoursynth filter for directshow, happens to me at least, so please use other models or providers when use in mpv.
 def scene_detect(
     clip: vs.VideoNode,
     onnx_path: str = r"D:\Misc\scd-models\maxxvitv2_nano_rw_256.sw_in1k_256px_b100_30k_coloraug0.4_6ch_clamp_softmax_fp16_op17_onnxslim.onnx",
@@ -211,7 +214,7 @@ def tensor_to_clip(clip: vs.VideoNode, image) -> vs.VideoNode:
 def prepare_clip(clip,onnx_res,fp16,resizer):
     col_fam=clip.format.color_family
     target_fmt=[vs.RGBS,vs.RGBH][fp16]
-    resizer=functools.partial(core.resize.Bicubic,filter_param_a=-0.3,filter_param_b=0.15) if resizer is None else resizer
+    resizer=functools.partial(core.resize.Bicubic,filter_param_a=-0.3,filter_param_b=0.15) if not callable(resizer) else resizer
     resizer=functools.partial(resizer,format=target_fmt)
     if clip.format.id==target_fmt and clip.width==onnx_res[0] and clip.height==onnx_res[1]:
         return clip
