@@ -47,7 +47,7 @@ core = vs.core
 def scene_detect(
     clip: vs.VideoNode,
     onnx_path: str = r"D:\Misc\scd-models\maxxvitv2_nano_rw_256.sw_in1k_256px_b100_30k_coloraug0.4_6ch_clamp_softmax_fp16_op17_onnxslim.onnx",
-    thresh: float = 0.98,
+    thresh: float = 0.92,
     fp16=None,
     onnx_res=None,
     onnx_type=None,
