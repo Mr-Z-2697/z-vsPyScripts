@@ -228,3 +228,11 @@ def prepare_clip(clip,onnx_res,fp16,resizer):
             else:
                 matrix=5
         return resizer(clip,onnx_res[0],onnx_res[1],matrix_in=matrix)
+
+def sc_copy(clip,propclip): # in case you need it, e.g. you want to preprocess the detection clip but not the result clip
+    def execute(n,f):
+        fout=f[0].copy()
+        fout.props._SceneChangeNext=f[1].props._SceneChangeNext
+        fout.props._SceneChangeMetrics=f[1].props._SceneChangeMetrics
+        return fout
+    return core.std.ModifyFrame(clip,[clip,propclip],execute)
