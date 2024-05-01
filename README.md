@@ -34,14 +34,14 @@ core.max_cache_size=xxx #change these values can work inside vsenv.py but like i
 -   [opencv-python](https://pypi.org/project/opencv-python/)(optional)
 -   [PyWavelets](https://pypi.org/project/PyWavelets/)(optional)
 -   [scipy](https://pypi.org/project/scipy/)(optional)
--   [python-dotenv](https://pypi.org/project/python-dotenv/)
+-   [python-dotenv](https://pypi.org/project/python-dotenv/)(optional)
 
 ### python scripts
 
--   [muvsfunc](https://github.com/WolframRhodium/muvsfunc)
 -   [nnedi3_resample](https://github.com/HomeOfVapourSynthEvolution/nnedi3_resample)
 -   [xvs](https://github.com/xyx98/my-vapoursynth-script)
 -   [finesharp](https://gist.github.com/4re/8676fd350d4b5b223ab9)(optional)
+-   [muvsfunc](https://github.com/WolframRhodium/muvsfunc)(optional)
 
 ### plugins (most of which should be optional when not using related function and this list is probably incomplete)
 
