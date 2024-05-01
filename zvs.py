@@ -1,10 +1,9 @@
-__version__=str(1710151860/2**31)
+__version__=str(1714540100/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
 import xvs
 import mvsfunc as mvf
-import muvsfunc as muf
 from functools import partial
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Union
@@ -338,6 +337,7 @@ def pfinesharp(src,crop=True,psize=4,**args):
 #nnrs and ssim is for chroma upscaling and downscaling only
 #deprecated, 無駄無駄
 def w2xaa(src,model=0,noise=-1,fp32=False,tile_size=0,format=None,full=None,matrix='709',nnrs=False,ssim=False,ssim_smooth=False,ssim_sigmoid=True,nnrs_down=None,ort=False,model_f=None,model_p=None,overlap=None):
+    import muvsfunc as muf
     if full==None:
         try:
             full=not src.get_frame(0).props._ColorRange
