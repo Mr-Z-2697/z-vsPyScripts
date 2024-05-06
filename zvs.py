@@ -1,4 +1,4 @@
-__version__=str(1714540100/2**31)
+__version__=str(1715029401/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1053,7 +1053,7 @@ def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None
     sw,sh=src.width,src.height
     p0,p1,p2=[i in planes for i in (0,1,2)]
     hb,vb='h' in dir,'v' in dir
-    sep=dir[1]=='+'
+    sep='+' in dir and hb and vb
     isgray=src.format.color_family==vs.GRAY
     if not (p0 and p1 and p2) and not isgray:
         original=src
