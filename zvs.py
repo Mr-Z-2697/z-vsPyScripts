@@ -1,4 +1,4 @@
-__version__=str(1715029401/2**31)
+__version__=str(1715154259/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -491,10 +491,13 @@ def n3pv(*args,**kwargs):
     last=list()
     if len(args)==1:
         if isinstance(args[0],list):
-            mats=[mats]*len(args[0]) if not isinstance(mats,(list,tuple)) else mats
-            fulls=[fulls]*len(args[0]) if not isinstance(fulls,(list,tuple)) else fulls
+            clipnum=len(args[0])
+            scale=[scale]*clipnum if not isinstance(scale,(list,tuple)) else scale
+            mats=[mats]*clipnum if not isinstance(mats,(list,tuple)) else mats
+            fulls=[fulls]*clipnum if not isinstance(fulls,(list,tuple)) else fulls
+            scale,mats,fulls=[i+[i[-1]]*clipnum for i in (scale,mats,fulls)]
             for i,clip in enumerate(args[0]):
-                _w,_h=clip.width*scale,clip.height*scale
+                _w,_h=clip.width*scale[i],clip.height*scale[i]
                 if bypass:
                     _tmpclp=core.resize.Bicubic(clip,_w,_h)
                     _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i],full=fulls[i])
@@ -504,6 +507,7 @@ def n3pv(*args,**kwargs):
                     _tmpclp=Nnrs.nnedi3_resample(clip,_w,_h,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i],fulls=fulls[i])
                 last.append(_tmpclp)
         elif isinstance(args[0],vs.VideoNode):
+            scale=scale[0] if isinstance(scale,(list,tuple)) else scale
             mats=mats[0] if isinstance(mats,(list,tuple)) else mats
             fulls=fulls[0] if isinstance(fulls,(list,tuple)) else fulls
             _w,_h=args[0].width*scale,args[0].height*scale
@@ -517,11 +521,14 @@ def n3pv(*args,**kwargs):
             last.append(_tmpclp)
         else:
             raise TypeError('input for preview should be list or clip')
-    else:
-        mats=[mats]*len(args) if not isinstance(mats,(list,tuple)) else mats
-        fulls=[fulls]*len(args) if not isinstance(fulls,(list,tuple)) else fulls
+    elif len(args)>1:
+        clipnum=len(args)
+        scale=[scale]*clipnum if not isinstance(scale,(list,tuple)) else scale
+        mats=[mats]*clipnum if not isinstance(mats,(list,tuple)) else mats
+        fulls=[fulls]*clipnum if not isinstance(fulls,(list,tuple)) else fulls
+        scale,mats,fulls=[i+[i[-1]]*clipnum for i in (scale,mats,fulls)]
         for i,clip in enumerate(args):
-            _w,_h=clip.width*scale,clip.height*scale
+            _w,_h=clip.width*scale[i],clip.height*scale[i]
             if bypass:
                 _tmpclp=core.resize.Bicubic(clip,_w,_h)
                 _tmpclp=mvf.ToRGB(_tmpclp,depth=depth,matrix=mats[i],full=fulls[i]).sub.Subtitle(f'clip{i}')
@@ -530,6 +537,8 @@ def n3pv(*args,**kwargs):
             else:
                 _tmpclp=Nnrs.nnedi3_resample(clip,_w,_h,csp=csp,nns=nns,nsize=nsize,qual=qual,mode=mode,mats=mats[i],fulls=fulls[i]).sub.Subtitle(f'clip{i}')
             last.append(_tmpclp)
+    else:
+        raise ValueError('Panik')
     return last[0] if len(last)==1 else core.std.Interleave(last) if int_ else last
 
 #quack quack, I'll take your grains
