@@ -58,7 +58,11 @@ def scene_detect(
     ssim_thresh=0.98,
     num_sessions=1,
     ort_log_level=3,
+    return_clip=None,
 ) -> vs.VideoNode:
+    
+    if not isinstance(return_clip,vs.VideoNode):
+        return_clip=clip
     
     ort.set_default_logger_severity(ort_log_level)
     
@@ -183,14 +187,14 @@ def scene_detect(
         )
 
         return core.std.ModifyFrame(
-            clip,
-            (clip, shift_down2, shift_down1, clip_down, shift_up1, shift_up2),
+            return_clip,
+            (return_clip, shift_down2, shift_down1, clip_down, shift_up1, shift_up2),
             execute,
         )
 
     if ssim_clip:
-        return core.std.ModifyFrame(clip,(clip,clip_down,clip_down[1:],ssim_clip),execute)
-    return core.std.ModifyFrame(clip,(clip,clip_down,clip_down[1:]),execute)
+        return core.std.ModifyFrame(return_clip,(return_clip,clip_down,clip_down[1:],ssim_clip),execute)
+    return core.std.ModifyFrame(return_clip,(return_clip,clip_down,clip_down[1:]),execute)
 
 
 def frame_to_tensor(frame: vs.VideoFrame):
