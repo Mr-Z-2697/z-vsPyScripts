@@ -1,4 +1,4 @@
-__version__=str(1721270337/2**31)
+__version__=str(1721282234/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -826,6 +826,9 @@ bsbd=badlyscaledborderdetect
 #rescale and try to unfuck border, target on highly specific situation
 #ALWAYS DO TESTS BEFORE USE!
 def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,border_handling=0,ignore_mask=None,taps=3,nns=3,nsize=1,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,cuth=1,cutv=1,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
+    if not args.get('warning_read'): #insert meme: galaxy brain
+        import warnings
+        warnings.warn("rattub: you may want to check normal rescale with border_handling=1 first.")
     if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
     srcw,srch=src.width,src.height
