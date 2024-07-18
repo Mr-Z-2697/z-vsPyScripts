@@ -1,4 +1,4 @@
-__version__=str(1715154259/2**31)
+__version__=str(1721268591/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -823,7 +823,7 @@ bsbd=badlyscaledborderdetect
 
 #rescale and try to unfuck border, target on highly specific situation
 #ALWAYS DO TESTS BEFORE USE!
-def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,taps=3,nns=3,nsize=1,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,cuth=1,cutv=1,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
+def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,border_handling=0,ignore_mask=None,taps=3,nns=3,nsize=1,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,cuth=1,cutv=1,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
     if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
     srcw,srch=src.width,src.height
@@ -853,8 +853,8 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_
     luma32=luma.fmtc.bitdepth(bits=32)
 
     bct='b=b,c=c' if kernel.lower()=='bicubic' else 'taps=taps' if kernel.lower()=='lanczos' else ''
-    luma_de=eval(f'core.descale.De{kernel.lower()}(luma32,{w},{h},src_top=-offst1,src_left=-offsl1,{bct})')
-    luma_de2=eval(f'core.descale.De{kernel.lower()}(luma32,{w},{h},src_top=offst1,src_left=offsl1,{bct})')
+    luma_de=eval(f'core.descale.De{kernel.lower()}(luma32,{w},{h},src_top=-offst1,src_left=-offsl1,border_handling=border_handling,ignore_mask=ignore_mask,{bct})')
+    luma_de2=eval(f'core.descale.De{kernel.lower()}(luma32,{w},{h},src_top=offst1,src_left=offsl1,border_handling=border_handling,ignore_mask=ignore_mask,{bct})')
     # luma_de=core.descale.Descale(luma32,w,h,kernel=kernel,b=b,c=c,taps=taps,src_top=-offst1,src_left=-offsl1)
     # luma_de2=core.descale.Descale(luma32,w,h,kernel=kernel,b=b,c=c,taps=taps,src_top=offst1,src_left=offsl1)
     resize_params=f'filter_param_a={b},filter_param_b={c},'if kernel=='bicubic'else f'filter_param_a={taps},'if kernel=='lanczos'else''
@@ -1345,6 +1345,8 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     tin='1886' if args.get("tin") is None else args.get("tin")
     fulls=False if args.get("fulls") is None else args.get("fulls")
     fulld=True if args.get("fulld") is None else args.get("fulld")
+    border_handling=args.get("border_handling",0)
+    ignore_mask=args.get("ignore_mask")
     if isinstance(mask_gen_clip,vs.VideoNode):
         luma=core.std.Interleave([luma,xvs.getY(mask_gen_clip)])
     if sigmoid:
@@ -1353,13 +1355,13 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
         luma=core.fmtc.transfer(luma,transs=tin,transd='linear',fulls=fulls,fulld=fulld)
     ####
     if kernel in ["Debilinear","Despline16","Despline36","Despline64"]:
-        luma_de=eval("core.descale.{k}(luma.fmtc.bitdepth(bits=32),w,h)".format(k=kernel))
+        luma_de=eval("core.descale.{k}(luma.fmtc.bitdepth(bits=32),w,h,border_handling=border_handling,ignore_mask=ignore_mask)".format(k=kernel))
         luma_up=eval("core.resize.{k}(luma_de,src_w,src_h)".format(k=kernel[2:].capitalize())).fmtc.bitdepth(bits=16,dmode=1)
     elif kernel=="Debicubic":
-        luma_de=core.descale.Debicubic(luma.fmtc.bitdepth(bits=32),w,h,b=args.get("b"),c=args.get("c"))
+        luma_de=core.descale.Debicubic(luma.fmtc.bitdepth(bits=32),w,h,border_handling=border_handling,ignore_mask=ignore_mask,b=args.get("b"),c=args.get("c"))
         luma_up=core.resize.Bicubic(luma_de,src_w,src_h,filter_param_a=args.get("b"),filter_param_b=args.get("c")).fmtc.bitdepth(bits=16,dmode=1)
     else:
-        luma_de=core.descale.Delanczos(luma.fmtc.bitdepth(bits=32),w,h,taps=args.get("taps"))
+        luma_de=core.descale.Delanczos(luma.fmtc.bitdepth(bits=32),w,h,border_handling=border_handling,ignore_mask=ignore_mask,taps=args.get("taps"))
         luma_up=core.resize.Lanczos(luma_de,src_w,src_h,filter_param_a=args.get("taps")).fmtc.bitdepth(bits=16,dmode=1)
 
     if isinstance(mask_gen_clip,vs.VideoNode):
@@ -1447,6 +1449,8 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     tin='1886' if args.get("tin") is None else args.get("tin")
     fulls=False if args.get("fulls") is None else args.get("fulls")
     fulld=True if args.get("fulld") is None else args.get("fulld")
+    border_handling=args.get("border_handling",0)
+    ignore_mask=args.get("ignore_mask")
     if isinstance(mask_gen_clip,vs.VideoNode):
         luma=core.std.Interleave([luma,xvs.getY(mask_gen_clip)])
     if sigmoid:
@@ -1456,13 +1460,13 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     cargs=xvs.cropping_args(src.width,src.height,h,bh,bw)
     ####
     if kernel in ["Debilinear","Despline16","Despline36","Despline64"]:
-        luma_de=eval("core.descale.{k}(luma.fmtc.bitdepth(bits=32),**cargs.descale_gen())".format(k=kernel))
+        luma_de=eval("core.descale.{k}(luma.fmtc.bitdepth(bits=32),border_handling=border_handling,ignore_mask=ignore_mask,**cargs.descale_gen())".format(k=kernel))
         luma_up=eval("core.resize.{k}(luma_de,**cargs.resize_gen())".format(k=kernel[2:].capitalize()))
     elif kernel=="Debicubic":
-        luma_de=core.descale.Debicubic(luma.fmtc.bitdepth(bits=32),b=args.get("b"),c=args.get("c"),**cargs.descale_gen())
+        luma_de=core.descale.Debicubic(luma.fmtc.bitdepth(bits=32),border_handling=border_handling,ignore_mask=ignore_mask,b=args.get("b"),c=args.get("c"),**cargs.descale_gen())
         luma_up=core.resize.Bicubic(luma_de,filter_param_a=args.get("b"),filter_param_b=args.get("c"),**cargs.resize_gen())
     else:
-        luma_de=core.descale.Delanczos(luma.fmtc.bitdepth(bits=32),taps=args.get("taps"),**cargs.descale_gen())
+        luma_de=core.descale.Delanczos(luma.fmtc.bitdepth(bits=32),border_handling=border_handling,ignore_mask=ignore_mask,taps=args.get("taps"),**cargs.descale_gen())
         luma_up=core.resize.Lanczos(luma_de,filter_param_a=args.get("taps"),**cargs.resize_gen())#
 
     if isinstance(mask_gen_clip,vs.VideoNode):
@@ -1541,7 +1545,7 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
         return core.std.ShufflePlanes([luma_rescale,src],[0,1,2],vs.YUV)
 
 #copy-paste from xyx98's xvs with some modification
-def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Optional[int]=None,mask:bool=True,mask_dif_pix:float=2.5,postfilter_descaled=None,selective_disable:bool=False,disable_thr:float=0.00001,showinfo=False,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,**args):
+def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Optional[int]=None,mask:bool=True,mask_dif_pix:float=2.5,postfilter_descaled=None,selective_disable:bool=False,disable_thr:float=0.00001,showinfo=False,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,border_handling=0,ignore_mask=None,**args):
     clip=core.fmtc.bitdepth(clip,bits=16)
     luma=xvs.getY(clip)
     src_h,src_w=clip.height,clip.width
@@ -1563,7 +1567,7 @@ def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Opt
     rescales=[]
     total=len(kernels)
     for i in kernels:
-        fmode=False if i.get("fmode") is None else i.get("fmode")
+        kfmode=False if i.get("fmode") is None else i.get("fmode")
         k=i["k"][2:]
         kb,kc,ktaps=i.get("b"),i.get("c"),i.get("taps")
         kw,kh=i.get("w"),i.get("h")
@@ -1574,23 +1578,25 @@ def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Opt
         kmask=mask if i.get("mask") is None else i.get("mask")
         kmdp=mask_dif_pix if i.get("mask_dif_pix") is None else i.get("mask_dif_pix")
         kpp=postfilter_descaled if i.get("postfilter_descaled") is None else i.get("postfilter_descaled")
-        multiple=1 if i.get("multiple") is None else i.get("multiple")
+        kmultiple=1 if i.get("multiple") is None else i.get("multiple")
         kmthr=mthr if i.get("mthr") is None else i.get("mthr")
-        mgc=mask_gen_clip if i.get("mask_gen_clip") is None else i.get("mask_gen_clip")
-        mof=mask_operate_func if i.get("mask_operate_func") is None else i.get("mask_operate_func")
-        lin=linear if i.get("linear") is None else i.get("linear")
-        sig=sigmoid if i.get("sigmoid") is None else i.get("sigmoid")
-        tin=tin if i.get("tin") is None else i.get("tin")
-        fulls=fulls if i.get("fulls") is None else i.get("fulls")
-        fulld=fulld if i.get("fulld") is None else i.get("fulld")
+        kmgc=mask_gen_clip if i.get("mask_gen_clip") is None else i.get("mask_gen_clip")
+        kmof=mask_operate_func if i.get("mask_operate_func") is None else i.get("mask_operate_func")
+        klin=linear if i.get("linear") is None else i.get("linear")
+        ksig=sigmoid if i.get("sigmoid") is None else i.get("sigmoid")
+        ktin=tin if i.get("tin") is None else i.get("tin")
+        kfulls=fulls if i.get("fulls") is None else i.get("fulls")
+        kfulld=fulld if i.get("fulld") is None else i.get("fulld")
+        kborder_handling=i.get("border_handling",border_handling)
+        kignore_mask=i.get("ignore_mask",ignore_mask)
 
-        if not fmode:
-            rescales.append(MRcore(luma,kernel=k,w=kw,h=kh,mask=kmask,mask_dif_pix=kmdp,postfilter_descaled=kpp,taps=ktaps,b=kb,c=kc,multiple=multiple,mthr=kmthr,mask_gen_clip=mgc,mask_operate_func=mof,linear=lin,sigmoid=sig,**args))
+        if not kfmode:
+            rescales.append(MRcore(luma,kernel=k,w=kw,h=kh,mask=kmask,mask_dif_pix=kmdp,postfilter_descaled=kpp,taps=ktaps,b=kb,c=kc,multiple=kmultiple,mthr=kmthr,mask_gen_clip=kmgc,mask_operate_func=kmof,linear=klin,sigmoid=ksig,tin=ktin,fulls=kfulls,fulld=kfulld,border_handling=kborder_handling,ignore_mask=kignore_mask,**args))
 
         else:
             kbh=src_h if i.get("bh") is None else i.get("bh")
             kbw=i.get("bw")
-            rescales.append(MRcoref(luma,kernel=k,w=kw,h=kh,bh=kbh,bw=kbw,mask=kmask,mask_dif_pix=kmdp,postfilter_descaled=kpp,mthr=kmthr,taps=ktaps,b=kb,c=kc,multiple=multiple,maskpp=mof,**args))
+            rescales.append(MRcoref(luma,kernel=k,w=kw,h=kh,bh=kbh,bw=kbw,mask=kmask,mask_dif_pix=kmdp,postfilter_descaled=kpp,mthr=kmthr,taps=ktaps,b=kb,c=kc,multiple=kmultiple,maskpp=kmof,mask_gen_clip=kmgc,linear=klin,sigmoid=ksig,tin=ktin,fulls=kfulls,fulld=kfulld,border_handling=kborder_handling,ignore_mask=kignore_mask,**args))
 
 
     def selector(n,f,src,clips):
@@ -1620,7 +1626,7 @@ def multirescale(clip:vs.VideoNode,kernels:list[dict],w:Optional[int]=None,h:Opt
         return core.std.ShufflePlanes([last,clip],[0,1,2],vs.YUV)
 
 #copy-paste from xyx98's xvs with some modification
-def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNode]=True,mask_dif_pix:float=2,postfilter_descaled=None,taps:int=3,b:float=0,c:float=0.5,multiple:float=1,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,custom_nnedi3down=False,show:str='result',**args):
+def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNode]=True,mask_dif_pix:float=2,postfilter_descaled=None,taps:int=3,b:float=0,c:float=0.5,multiple:float=1,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,custom_nnedi3down=False,show:str='result',border_handling=0,ignore_mask=None,**args):
     src_w,src_h=clip.width,clip.height
     clipo=clip
     if isinstance(mask_gen_clip,vs.VideoNode):
@@ -1631,7 +1637,7 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNod
         clip=core.fmtc.transfer(clip,transs=tin,transd='linear',fulls=fulls,fulld=fulld)
     clip32=core.fmtc.bitdepth(clip,bits=32)
     bct='b=b,c=c' if kernel.lower()=='bicubic' else 'taps=taps' if kernel.lower()=='lanczos' else ''
-    descaled=eval(f'core.descale.De{kernel.lower()}(clip32,width={w},height={h},{bct})')
+    descaled=eval(f'core.descale.De{kernel.lower()}(clip32,width={w},height={h},border_handling=border_handling,ignore_mask=ignore_mask,{bct})')
     # descaled=core.descale.Descale(clip32,width=w,height=h,kernel=kernel.lower(),taps=taps,b=b,c=c)
     upscaled=xvs.resize_core(kernel.capitalize(),taps,b,c)(descaled,src_w,src_h)
     if isinstance(mask_gen_clip,vs.VideoNode):
@@ -1702,7 +1708,7 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNod
         return core.std.ModifyFrame(rescale,[diff,rescale],calc),core.std.ModifyFrame(mask,[diff,mask],calc),descaled
 
 #copy-paste from xyx98's xvs with some modification
-def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask: Union[bool,vs.VideoNode]=True,mask_dif_pix:float=2,postfilter_descaled=None,mthr:list[int]=[2,2],taps:int=3,b:float=0,c:float=0.5,multiple:float=1,maskpp=None,show:str="result",mask_gen_clip=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,custom_nnedi3down=False,**args):
+def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask: Union[bool,vs.VideoNode]=True,mask_dif_pix:float=2,postfilter_descaled=None,mthr:list[int]=[2,2],taps:int=3,b:float=0,c:float=0.5,multiple:float=1,maskpp=None,show:str="result",mask_gen_clip=None,linear=False,sigmoid=False,tin='1886',fulls=False,fulld=True,custom_nnedi3down=False,border_handling=0,ignore_mask=None,**args):
 
     src_w,src_h=clip.width,clip.height
     clipo=clip
@@ -1715,7 +1721,7 @@ def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask
     cargs=xvs.cropping_args(src_w,src_h,h,bh,bw)
     clip32=core.fmtc.bitdepth(clip,bits=32)
     bct='b=b,c=c' if kernel.lower()=='bicubic' else 'taps=taps' if kernel.lower()=='lanczos' else ''
-    descaled=eval(f'core.descale.De{kernel.lower()}(clip32,**cargs.descale_gen(),{bct})')
+    descaled=eval(f'core.descale.De{kernel.lower()}(clip32,**cargs.descale_gen(),border_handling=border_handling,ignore_mask=ignore_mask,{bct})')
     # descaled=core.descale.Descale(clip32,kernel=kernel.lower(),taps=taps,b=b,c=c,**cargs.descale_gen())
     upscaled=xvs.resize_core(kernel.capitalize(),taps,b,c)(descaled,**cargs.resize_gen())
     if isinstance(mask_gen_clip,vs.VideoNode):
