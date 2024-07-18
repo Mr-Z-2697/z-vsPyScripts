@@ -1,4 +1,4 @@
-__version__=str(1721268591/2**31)
+__version__=str(1721270337/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -56,7 +56,7 @@ nnrs.nnedi3_resample=partial(nnrs.nnedi3_resample,mode=nnrs_mode_default,nns=3,n
 Nnrs=nnrs
 
 
-#denoise pq hdr content by partially convert it to bt709, do denoise in bt709 then take the difference back to pq, may yield a better result
+#denoise pq hdr content by partially convert it to bt709, do denoise in bt709 then take the difference back to pq, may yeeld a better result
 def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=False,bm3dtyp=bm3d_mode_default,vt=0,mdegrain=True,tr=2,pel=1,blksize=16,overlap=None,chromamv=True,thsad=100,thsadc=None,thscd1=400,thscd2=130,truemotion=False,nl=100,contrasharp=1,to709=1,show='output',limit=None,limitc=None,sigma2=None,radius2=None,lf=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,pref=None):
     if lumaonly:
         chromamv=False
@@ -131,9 +131,11 @@ mvout: output a dict of mvs ready for "mvin"
 mvout_sup: output super clips as well, benefit is small and may cause unintended behavior, not recommended
 mvin: take a dict of mvs, use them to degrain, if super clips present, they will be used too
 mvinrm: apply recalculate on mvs from "mvin"
-mvupd: only with "mvinrm", decide whether to modify the input dict
-limit: passed to mdegrain as before (it was included in **args ;P) if None or [0-1<<bitdepth-1], auto limit plagiarized from MCTemporalDenoise if negative value is specified.
-lf: provide your own func for limit (does not override the "limit" arg of mdegrain) eg: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20) or a number represents "thr" in mvf.LimitFilter
+mvupd: only with "mvinrm", decide whether to update the input dict
+limit: passed to mdegrain as before (it was included in **args ;P) if None or in range [0, (1<<bitdepth)-1], if a negative value is specified, use auto limit plagiarized from MCTemporalDenoise.
+alim_ref: provide ref clip for auto limit, if not provided, "pref" is used.
+alim_cdif: use cdif insteal of std.MakeDiff in auto limit.
+lf: provide your own func for limit (does not override the "limit" arg of mdegrain) eg: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20) or a number represents "thr" in equivalent of the example func.
 '''
 def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,limit=None,lf=None,sargs={},aargs={},rargs={},alim_ref=None,alim_cdif=False,**args):
     if resize_pad:
@@ -151,7 +153,7 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
     last=src
     if pref==None:
         pref=last
-    if limit!=None and limit<=-1:
+    if limit!=None and limit<0:
         limit=None
         alim=True
         if alim_ref==None:
