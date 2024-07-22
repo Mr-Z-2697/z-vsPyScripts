@@ -41,7 +41,7 @@ core.max_cache_size=xxx #change these values can work inside vsenv.py but like i
 -   [nnedi3_resample](https://github.com/HomeOfVapourSynthEvolution/nnedi3_resample)
 -   [xvs](https://github.com/xyx98/my-vapoursynth-script)
 -   [finesharp](https://gist.github.com/4re/8676fd350d4b5b223ab9)(optional)
--   [muvsfunc](https://github.com/WolframRhodium/muvsfunc)(optional)
+-   [muvsfunc](https://github.com/WolframRhodium/muvsfunc)(optional but required by xvs)
 
 ### plugins (most of which should be optional when not using related function and this list is probably incomplete)
 
