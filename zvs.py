@@ -136,8 +136,9 @@ limit: passed to mdegrain as before (it was included in **args ;P) if None or in
 alim_ref: provide ref clip for auto limit, if not provided, "pref" is used.
 alim_cdif: use cdif insteal of std.MakeDiff in auto limit.
 lf: provide your own func for limit (does not override the "limit" arg of mdegrain) eg: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20) or a number represents "thr" in equivalent of the example func.
+elast: if using default "lf" func (i.e. passing in a number as lf), this controls the "elast" of it. otherwise this arg is ignored.
 '''
-def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,limit=None,lf=None,sargs={},aargs={},rargs={},alim_ref=None,alim_cdif=False,**args):
+def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,limit=None,lf=None,elast=20,sargs={},aargs={},rargs={},alim_ref=None,alim_cdif=False,**args):
     if resize_pad:
         if isinstance(resize_pad,bool):
             src=rpclip(src,blksize)
@@ -242,7 +243,7 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
     if callable(lf):
         last=lf(last,src)
     elif isinstance(lf,(int,float)):
-        last=mvf.LimitFilter(last,src,thr=lf,elast=20)
+        last=mvf.LimitFilter(last,src,thr=lf,elast=elast)
     if cs:
         last=rpfilter(last,src,filter=lambda x,y: ContraSharpening(x,y,radius=csrad,rep=csrep,planes=cspl),psize=4)
     if resize_pad:
