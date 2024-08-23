@@ -1,4 +1,4 @@
-__version__=str(1721282234/2**31)
+__version__=str(1724435693/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -827,9 +827,6 @@ bsbd=badlyscaledborderdetect
 #rescale and try to unfuck border, target on highly specific situation
 #ALWAYS DO TESTS BEFORE USE!
 def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,border_handling=0,ignore_mask=None,taps=3,nns=3,nsize=1,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,cuth=1,cutv=1,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
-    if not args.get('warning_read'): #insert meme: galaxy brain
-        import warnings
-        warnings.warn("rattub: you may want to check normal rescale with border_handling=1 first.")
     if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
     srcw,srch=src.width,src.height
@@ -1062,7 +1059,7 @@ def setparams(src,range=None,matrix=None,transfer=None,primaries=None,chromaloc=
 #just for fun
 #but impulse mode is more accurate than gaussian blur functions provided by tcanny and bilateral in my book, most likely the border handling stuff, i dunno (but much slower at very large stdev (but faster at small stdev (< 9 on my machine)))
 #impdr: impulse mode pre-downscale ratio, to tradeoff for some speed perhaps
-def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None,impext=3,impdr=1,kd='bilinear',rsa1=9,sci=False,dir='hv'):
+def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None,impext=3,impdr=1,kd='bilinear',rsa1=9,sci=False,dir='hv',is444=None):
     import warnings
     if stdev==None: stdev=sigma #lame alias approach
     sw,sh=src.width,src.height
@@ -1085,7 +1082,8 @@ def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None
         if impdr<1: raise ValueError('impdr<1, don\'t do it bruh.')
         dw,dh=round(sw/impdr) if hb else sw,round(sh/impdr) if vb else sh
         stdev/=impdr
-        is444=src.format.subsampling_w==src.format.subsampling_h==0
+        if is444==None:
+            is444=src.format.subsampling_w==src.format.subsampling_h==0
         if not is444: dw,dh=round(dw/2)*2,round(dh/2)*2
         r=math.ceil(max(1,stdev)*impext) if r==None else r
         if sci:
