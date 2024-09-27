@@ -1,6 +1,6 @@
 '''https://github.com/styler00dollar/VSGAN-tensorrt-docker/blob/main/src/scene_detect.py
 Model Download: https://github.com/styler00dollar/VSGAN-tensorrt-docker/releases/tag/models
-(look for onnx models start with "sc_", "tf_", "maxxvitv2", "davit" and "autoshot")
+(look for onnx models start with "sc_")
 
 USAGE:
 import scene_detect as scd
@@ -54,6 +54,7 @@ def scene_detect(
     ort_provider='Dml',
     resizer=None,
     model_rev=None,
+    output_type=None,
     ssim_clip=None,
     ssim_thresh=0.98,
     num_sessions=1,
@@ -98,10 +99,16 @@ def scene_detect(
         else:
             model_rev=2
 
+    if output_type is None:
+        if 'dists' in onnx_name_split:
+            output_type=2
+        else:
+            output_type=1
+
     options = {}
     '''
     I can't test these options because I can't get TRT provider to work in my Windows system.
-    The "trt_engine_cache_path" looks definitely gonna cause some trouble (in Windows, prehaps Linux as well, as the upstream is intended for docker).
+    The "trt_engine_cache_path" looks definitely gonna cause some trouble (in Windows, perhaps Linux as well, as the upstream is intended for docker).
     '''
     if ort_provider=='Tensorrt':
         # https://onnxruntime.ai/docs/execution-providers/TensorRT-ExecutionProvider.html
@@ -157,11 +164,14 @@ def scene_detect(
                 I3 = frame_to_tensor(f[4])
                 I4 = frame_to_tensor(f[5])
                 in_sess = np.stack([I0, I1, I2, I3, I4], axis=1)
-            result = ort_session.run(None, {"input": in_sess})[0][0]
-            if onnx_type=='2img':
-                result=result[0]
-            elif onnx_type=='5img':
-                result=result[2]
+            if output_type==2:
+                result=ort_session.run(None, {"input": in_sess})[0]
+            else:
+                result = ort_session.run(None, {"input": in_sess})[0][0]
+                if onnx_type=='2img':
+                    result=result[0]
+                elif onnx_type=='5img':
+                    result=result[2]
 
         if result > thresh:
             fout.props._SceneChangeNext=1
