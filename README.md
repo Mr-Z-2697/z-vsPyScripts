@@ -23,11 +23,11 @@ core.max_cache_size=xxx #change these values can work inside vsenv.py but like i
 
 ### scene_detect
 
-```
+
 it's recommended to uninstall any other variant/flavor/EP of onnxruntime before you install your desired ort version/package
-pip uninstall onnxruntime[-xxx]
-pip install onnxruntime-directml or what ever but i recommend dml for windows
-```
+`pip uninstall onnxruntime[-xxx]`
+`pip install onnxruntime-directml` or what ever but i recommend dml for windows
+
 ```
 import scene_detect as scd
 clip=scd.scene_detect(clip[,onnx_path=<str>,thresh=0.92,ort_provider='Dml' et cetera et cetera ])
