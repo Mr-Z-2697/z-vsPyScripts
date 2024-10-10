@@ -29,7 +29,7 @@ pip install onnxruntime-directml
 ```
 ```
 import scene_detect as scd
-clip=scd.scene_detect(clip[,onnx_path=<str>,thresh=0.92,ort_provider='Dml'])
+clip=scd.scene_detect(clip[,onnx_path=<str>,thresh=0.92,ort_provider='Dml' et cetera et cetera ])
 ```
 
 ## Requirements (for zvs)
