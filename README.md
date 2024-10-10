@@ -15,15 +15,22 @@ The global one resides alongside the main script file zvs.py, and a local one ca
 
 ### vsenv
 
-\*cringe\*
-
 ```
 from vsenv import *
 core.num_threads=nn
 core.max_cache_size=xxx #change these values can work inside vsenv.py but like if you preview in vsedit it only works for first time so not very well... but other than that i think it's viable
 ```
 
-\*cringe\*
+### scene_detect
+
+```
+pip uninstall onnxruntime
+pip install onnxruntime-directml
+```
+```
+import scene_detect as scd
+clip=scd.scene_detect(clip[,onnx_path=<str>,thresh=0.92,ort_provider='Dml'])
+```
 
 ## Requirements (for zvs)
 
