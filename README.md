@@ -24,8 +24,9 @@ core.max_cache_size=xxx #change these values can work inside vsenv.py but like i
 ### scene_detect
 
 ```
-pip uninstall onnxruntime
-pip install onnxruntime-directml
+it's recommended to uninstall any other variant/flavor/EP before you install your desired onnxruntime version/package
+pip uninstall onnxruntime[-xxx]
+pip install onnxruntime-directml or what ever but i recommend dml for windows
 ```
 ```
 import scene_detect as scd
