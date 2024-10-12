@@ -1,4 +1,4 @@
-__version__=str(1724435693/2**31)
+__version__=str(1728756373/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -36,6 +36,7 @@ functions:
 - gaussianblurfmtc (gbf for short)
 - cdif
 - alpha2clip
+- addsc
 '''
 
 try:
@@ -1168,6 +1169,26 @@ def plotcdif(merge=False,p=16384,mode='sine',lb=10):
 
 def alpha2clip(src):
     return core.std.PropToClip(src,'_Alpha')
+
+
+def addsc(src,framelist=[],listfile=None,dir='next'):
+    if isinstance(listfile,(str,os.PathLike)):
+        with open(listfile,'r') as lf:
+            framelist=lf.read().split()
+            framelist=[int(i) for i in framelist]
+    if dir=='next':
+        def mod(n,f):
+            fout=f.copy()
+            if n in framelist:
+                fout.props._SceneChangeNext=1
+            return fout
+    elif dir=='prev':
+        def mod(n,f):
+            fout=f.copy()
+            if n in framelist:
+                fout.props._SceneChangePrev=1
+            return fout
+    return core.std.ModifyFrame(src,src,mod)
 
 
 ########################################################
