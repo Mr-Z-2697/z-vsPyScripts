@@ -56,7 +56,7 @@ clip=scd.scene_detect(clip[,onnx_path=<str>,thresh=0.92,ort_provider='Dml' et ce
 -   [BM3DCUDA](https://github.com/WolframRhodium/VapourSynth-BM3DCUDA)
 -   [BM3D](https://github.com/HomeOfVapourSynthEvolution/VapourSynth-BM3D) (only VAggregate is used for not-v2 bm3dcuda)
 -   *[FFTW3](http://www.fftw.org/install/windows.html)* (dependency of some plugins such as the one above)
--   [mvtools](https://github.com/dubhater/vapoursynth-mvtools) (for degrain4-6 and some speed up use [my build](https://github.com/Mr-Z-2697/vapoursynth-mvtools/releases) before they make new release)
+-   [mvtools](https://github.com/dubhater/vapoursynth-mvtools) ([my build](https://github.com/Mr-Z-2697/vapoursynth-mvtools/releases) is also available, clang produces faster binary in this case)
 -   [descale](https://github.com/Jaded-Encoding-Thaumaturgy/vapoursynth-descale)
 -   [nnedi3cl](https://github.com/HomeOfVapourSynthEvolution/VapourSynth-NNEDI3CL)/[znedi3](https://github.com/sekrit-twc/znedi3)/[nnedi3](https://github.com/dubhater/vapoursynth-nnedi3)
 -   [fmtconv](https://gitlab.com/EleonoreMizo/fmtconv)
