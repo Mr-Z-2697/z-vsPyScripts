@@ -35,7 +35,8 @@ def debit(src,depth=1,dither=0,fulls=False,fulld=False):
     if depth>=8:
         raise ValueError("use normal dither bro")
     if src.format.sample_type==vs.FLOAT:
-        raise NotImplementedError("panik")
+        src=core.resize.Point(src,format=src.format.replace(sample_type=vs.INTEGER,bits_per_sample=16),range_s='full')
+        fulls=True
     if src.format.bits_per_sample < 16:
         src=core.std.Expr(src,'x {} *'.format(2**(16-src.format.bits_per_sample)),src.format.replace(bits_per_sample=16))
     if isinstance(dither,int):
