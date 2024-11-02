@@ -1,4 +1,4 @@
-__version__=str(1730544184/2**31)
+__version__=str(1730546062/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1196,8 +1196,11 @@ def DoG(src,s1=1,s2=2,grayscale=True,abs=True):
         src=src.std.ShufflePlanes(0,vs.GRAY)
     g1=gbf(src,s1)
     g2=gbf(src,s2)
-    expr='x y -' + ' abs' if abs else ''
-    return core.std.Expr([g1,g2],expr)
+    expr='x y -' + (' abs' if abs else '')
+    if abs:
+        return core.std.Expr([g1,g2],expr)
+    else:
+        return core.std.Expr([g1,g2],expr,g1.format.replace(sample_type=vs.FLOAT,bits_per_sample=32))
 dog=DoG
 
 
