@@ -31,7 +31,9 @@ def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=
     return last
 
 # i know mvf.Depth can do just want a simpler approach
-def debit(src,depth=1,dither=0,fulls=False,fulld=False):
+# is it still the depth we want if chroma sign is considered? what about the range of values?
+# brain cells are dying
+def debit(src,depth=1,dither=0,fulls=False,fulld=False,cs=False,cs2=False):
     if depth>=8:
         raise ValueError("use normal dither bro")
     if src.format.sample_type==vs.FLOAT:
@@ -46,13 +48,20 @@ def debit(src,depth=1,dither=0,fulls=False,fulld=False):
     elif callable(dither):
         rehtid=dither
     scaling=255/(2**depth-1)
+    scalingc=scaling if not cs2 else scaling/2
     last=src
     if not fulls:
         last=zvs.setrange(last,'rm')
         last=last.resize.Point(range_in_s='limited',range_s='full')
-    last=last.std.Expr(f'x {scaling} /')
+    if cs:
+        last=last.std.Expr([f'x {scaling} /',f'x 32768 - {scalingc} / 32768 +'])
+    else:
+        last=last.std.Expr(f'x {scaling} /')
     last=rehtid(last)
-    last=last.std.Expr(f'x {scaling} *')
+    if cs:
+        last=last.std.Expr([f'x {scaling} *',f'x 128 - {scalingc} * 128 +'])
+    else:
+        last=last.std.Expr(f'x {scaling} *')
     if not fulld:
         last=zvs.setrange(last,'rm')
         last=last.resize.Point(range_in_s='full',range_s='limited')
