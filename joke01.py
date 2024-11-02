@@ -32,6 +32,8 @@ def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=
 
 # i know mvf.Depth can do just want a simpler approach
 def debit(src,depth=1,dither=0,fulls=False,fulld=False):
+    if depth>=8:
+        raise ValueError("use normal dither bro")
     if src.format.sample_type==vs.FLOAT:
         raise NotImplementedError("panik")
     if src.format.bits_per_sample < 16:
