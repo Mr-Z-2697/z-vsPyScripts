@@ -1,4 +1,4 @@
-__version__=str(1728756373/2**31)
+__version__=str(1730544184/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1189,6 +1189,16 @@ def addsc(src,framelist=[],listfile=None,dir='next'):
                 fout.props._SceneChangePrev=1
             return fout
     return core.std.ModifyFrame(src,src,mod)
+
+#difference of gaussians, basic stuff
+def DoG(src,s1=1,s2=2,grayscale=True,abs=True):
+    if grayscale:
+        src=src.std.ShufflePlanes(0,vs.GRAY)
+    g1=gbf(src,s1)
+    g2=gbf(src,s2)
+    expr='x y -' + ' abs' if abs else ''
+    return core.std.Expr([g1,g2],expr)
+dog=DoG
 
 
 ########################################################
