@@ -33,8 +33,8 @@ def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=
 # i know mvf.Depth can do just want a simpler approach
 # is it still the depth we want if chroma sign is considered? what about the range of values?
 # brain cells are dying
-def debit(src,depth=1,dither=0,fulls=False,fulld=False,cs=False,cs2=False):
-    if depth>=8:
+def debit(src,depth=1,dither=0,fulls=False,fulld=False,cs=False,cs2=False,count=None):
+    if depth>=8 or count>=256:
         raise ValueError("use normal dither bro")
     if src.format.sample_type==vs.FLOAT:
         src=core.resize.Point(src,format=src.format.replace(sample_type=vs.INTEGER,bits_per_sample=16),range_s='full')
@@ -47,7 +47,9 @@ def debit(src,depth=1,dither=0,fulls=False,fulld=False,cs=False,cs2=False):
         rehtid=lambda x:x.resize.Point(format=x.format.replace(bits_per_sample=8),dither_type=dither)
     elif callable(dither):
         rehtid=dither
-    scaling=255/(2**depth-1)
+    if count==None:
+        count=2**depth
+    scaling=255/(count-1)
     scalingc=scaling if not cs2 else scaling/2
     last=src
     if not fulls:
