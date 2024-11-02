@@ -30,7 +30,7 @@ def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=
         last=core.std.MergeDiff(last,ndhr)
     return last
 
-
+# i know mvf.Depth can do just want a simpler approach
 def debit(src,depth=1,dither=0,fulls=False,fulld=False):
     if src.format.sample_type==vs.FLOAT:
         raise NotImplementedError("panik")
@@ -39,7 +39,7 @@ def debit(src,depth=1,dither=0,fulls=False,fulld=False):
     if isinstance(dither,int):
         rehtid=lambda x:x.fmtc.bitdepth(bits=8,dmode=dither)
     elif isinstance(dither,str):
-        rehtid=lambda x:x.resize.Point(format=x.format.replace(bits_per_sample=8))
+        rehtid=lambda x:x.resize.Point(format=x.format.replace(bits_per_sample=8),dither_type=dither)
     elif callable(dither):
         rehtid=dither
     scaling=255/(2**depth-1)
