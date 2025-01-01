@@ -1,4 +1,4 @@
-__version__=str(1735749074/2**31)
+__version__=str(1735750165/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1205,16 +1205,18 @@ def DoG(src,s1=1,s2=2,grayscale=True,abs=True):
 dog=DoG
 
 
-def simplebitdepth(src,bits,dither='none'):
+def simplebitdepth(src,bits,dither='none',float=False):
     if isinstance(dither,int):
         dither={0:'none',1:'ordered',2:'random'}[dither]
     sb=src.format.bits_per_sample
-    if sb < bits:
+    sst=src.format.sample_type
+    dst=(vs.INTEGER,vs.FLOAT)[float] #gocha
+    if sb<bits and sst==dst:
         return core.std.Expr(src,'x {} *'.format(2**(bits-src.format.bits_per_sample)),src.format.replace(bits_per_sample=bits))
-    elif sb == bits:
+    elif sb==bits and sst==dst:
         return src
     else:
-        return src.resize.Point(format=src.format.replace(bits_per_sample=bits),dither_type=dither)
+        return src.resize.Point(format=src.format.replace(sample_type=dst,bits_per_sample=bits),dither_type=dither)
 #alias
 sb=simplebitdepth
 
