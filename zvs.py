@@ -1,4 +1,4 @@
-__version__=str(1735750165/2**31)
+__version__=str(1735759776/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -37,6 +37,7 @@ functions:
 - cdif
 - alpha2clip
 - addsc
+- simplebitdepth (sb for short)
 '''
 
 try:
@@ -1207,7 +1208,7 @@ dog=DoG
 
 def simplebitdepth(src,bits,dither='none',float=False):
     if isinstance(dither,int):
-        dither={0:'none',1:'ordered',2:'random'}[dither]
+        dither={0:'none',1:'ordered',2:'random',3:'error_diffusion'}[dither]
     sb=src.format.bits_per_sample
     sst=src.format.sample_type
     dst=(vs.INTEGER,vs.FLOAT)[float] #gocha
