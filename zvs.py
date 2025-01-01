@@ -1,4 +1,4 @@
-__version__=str(1730546062/2**31)
+__version__=str(1735749074/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -64,7 +64,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
         chromaclip=src
         src=xvs.getY(src)
 
-    src=src.fmtc.bitdepth(bits=16)
+    src=simplebitdepth(src,16)
     denoised=sdr=core.resize.Bicubic(src,transfer_in=16,transfer=1,nominal_luminance=nl) if to709 else src
     pref=core.resize.Bicubic(pref,transfer_in=16,transfer=1,nominal_luminance=nl) if pref!=None else pref if to709 else pref
     if mdegrain:
@@ -1201,7 +1201,22 @@ def DoG(src,s1=1,s2=2,grayscale=True,abs=True):
         return core.std.Expr([g1,g2],expr)
     else:
         return core.std.Expr([g1,g2],expr,g1.format.replace(sample_type=vs.FLOAT,bits_per_sample=32))
+#alias
 dog=DoG
+
+
+def simplebitdepth(src,bits,dither='none'):
+    if isinstance(dither,int):
+        dither={0:'none',1:'ordered',2:'random'}[dither]
+    sb=src.format.bits_per_sample
+    if sb < bits:
+        return core.std.Expr(src,'x {} *'.format(2**(bits-src.format.bits_per_sample)),src.format.replace(bits_per_sample=bits))
+    elif sb == bits:
+        return src
+    else:
+        return src.resize.Point(format=src.format.replace(bits_per_sample=bits),dither_type=dither)
+#alias
+sb=simplebitdepth
 
 
 ########################################################
@@ -1971,14 +1986,13 @@ def sbr(c: vs.VideoNode, r: int = 1, planes: Optional[Union[int, Sequence[int]]]
     return core.std.MakeDiff(c, RG11DD, planes=planes)
 
 #copy-paste from xyx98's xvs with some modification
-def SCSharpen(clip:vs.VideoNode,ref:vs.VideoNode,max_sharpen_weight=3/7,min_sharpen_weight=0,casstr=0.7):
+def SCSharpen(clip:vs.VideoNode,ref:vs.VideoNode,max_sharpen_weight=3/7,min_sharpen_weight=0,casstr=0.7,planes=[0]):
     """
     Sharpness Considered Sharpen:
     It mainly design for sharpen a bad source after blurry filtered such as strong AA, and source unsuited to be reference when you want sharpen filtered clip to match the sharpness of source.
     It use cas as sharpen core,and calculate sharpness of source(reference clip),filtered clip (the clip you want sharpen),and sharpen clip(by cas).Use these sharpness information adjust merge weight of filtered clip and sharpen clip.
     ############################
-    *If clean is True,use haf.EdgeCleaner clean edge after sharpen.*
-    arg clean is removed because of the deprecation of havsfunc in this script.
+    arg "clean" was removed because of the deprecation of havsfunc in this script(zvs).
     Don't use high max_sharpen_weight or you might need addition filter to resolve artifacts cause by cas(1).
     only luma processed,output is always 16bit.
     """
@@ -1989,10 +2003,17 @@ def SCSharpen(clip:vs.VideoNode,ref:vs.VideoNode,max_sharpen_weight=3/7,min_shar
     # if min_sharpen_weight >1 or min_sharpen_weight <0  or max_sharpen_weight<min_sharpen_weight:
     #     raise ValueError("min_sharpen_weight should in [0,1] and less than max_sharpen_weight")
 
-    ref,clip=core.fmtc.bitdepth(ref,bits=16),core.fmtc.bitdepth(clip,bits=16)
+    ref,clip=map(partial(simplebitdepth,bits=16),[ref,clip])
+    doY=0 in planes
+    doU=1 in planes
+    doV=2 in planes
+    Yonly=doY and not doU and not doV
     if clip.format.color_family == vs.YUV:
         isYUV=True
-        last=xvs.getY(clip)
+        if Yonly:
+            last=xvs.getY(clip)
+        else:
+            last=clip
     elif clip.format.color_family == vs.GRAY:
         last=clip
         isYUV=False
@@ -2000,13 +2021,16 @@ def SCSharpen(clip:vs.VideoNode,ref:vs.VideoNode,max_sharpen_weight=3/7,min_shar
         raise vs.ValueError("clip must be YUV or GRAY")
 
     if ref.format.color_family == vs.YUV:
-        ref=xvs.getY(ref)
+        if Yonly:
+            ref=xvs.getY(ref)
+        else:
+            pass
     elif ref.format.color_family == vs.GRAY:
         pass
     else:
         raise vs.ValueError("ref must be YUV or GRAY")
 
-    sharp=core.cas.CAS(last,casstr,0)
+    sharp=core.cas.CAS(last,casstr,0 if Yonly else planes)
     ref,last,sharp=map(getsharpness,[ref,last,sharp])
     #########################
     base=" z.sharpness y.sharpness - "
@@ -2020,7 +2044,7 @@ def SCSharpen(clip:vs.VideoNode,ref:vs.VideoNode,max_sharpen_weight=3/7,min_shar
     expr=f"{base} 0 = {L1} z * {L2} y * + {k1} {L1} > {L1} z * {L2} y * + {k1} {L3} < {L3} z * {L4} y * + {k1} z * {k2} y * + ? ? ?"
     last=core.akarin.Expr([ref,last,sharp],expr)
 
-    if isYUV:
+    if isYUV and Yonly:
         last=core.std.ShufflePlanes([last,clip],[0,1,2],vs.YUV)
 
     return last
@@ -2036,7 +2060,7 @@ def getsharpness(clip,show=False):
         fout.props["sharpness"]=f[0].props["PlaneStatsAverage"]*65535
         return fout
 
-    luma=xvs.getY(clip).fmtc.bitdepth(bits=16)
+    luma=xvs.getY(clip).resize.Point(format=vs.GRAY16)
     blur=core.rgvs.RemoveGrain(luma, 20)
     dif=core.akarin.Expr([luma,blur],[f"x y - 65535 / 2 pow 65535 *"])
     dif=core.std.PlaneStats(dif)
