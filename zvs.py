@@ -1,4 +1,4 @@
-__version__=str(1735889731/2**31)
+__version__=str(1735889956/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -66,8 +66,8 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
         src=xvs.getY(src)
 
     src=simplebitdepth(src,16)
-    denoised=sdr=core.resize.Bicubic(src,transfer_in=16,transfer=1,nominal_luminance=nl) if to709 else src
-    pref=core.resize.Bicubic(pref,transfer_in=16,transfer=1,nominal_luminance=nl) if pref!=None else pref if to709 else pref
+    denoised=sdr=core.resize.Point(src,transfer_in=16,transfer=1,nominal_luminance=nl) if to709 else src
+    pref=core.resize.Point(pref,transfer_in=16,transfer=1,nominal_luminance=nl) if pref!=None else pref if to709 else pref
     if mdegrain:
         limitc=limitc if limitc else limit
         denoised=zmde(denoised,tr=tr,thsad=thsad,thsadc=thsadc,blksize=blksize,overlap=overlap,pel=pel,thscd1=thscd1,thscd2=thscd2,truemotion=truemotion,chromamv=chromamv,limit=limit,limitc=limitc,lf=lf,refinemotion=refinemotion,rmblksize=rmblksize,rmoverlap=rmoverlap,rmpel=rmpel,rmchromamv=rmchromamv,rmtruemotion=rmtruemotion,rmthsad=rmthsad,pref=pref)
@@ -116,7 +116,7 @@ def pqdenoise(src,sigma=[1,1,1],lumaonly=False,block_step=7,radius=1,finalest=Fa
         return denoised
 
     if to709:
-        denoised,sdr=[core.resize.Bicubic(i,transfer_in=1,transfer=16,nominal_luminance=nl) for i in (denoised,sdr)]
+        denoised,sdr=[core.resize.Point(i,transfer_in=1,transfer=16,nominal_luminance=nl) for i in (denoised,sdr)]
 
     output=core.std.Expr([src,sdr,denoised],'x y - z +') if to709 else denoised
     if lumaonly:
@@ -166,7 +166,7 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
     else:
         alim=False
     if not chromamv:
-        pref=core.resize.Bicubic(pref,range_in_s='limited',range_s='full')
+        pref=core.resize.Point(pref,range_in_s='limited',range_s='full')
     if tr==None:
         if not mvd_in:
             tr=2
@@ -478,7 +478,7 @@ def rpclip(input,psize=2,left=None,right=None,top=None,bottom=None):
     if bottom==None:bottom=psize
     w=input.width+left+right
     h=input.height+top+bottom
-    return core.resize.Bicubic(input,w,h,src_top=-top,src_left=-left,src_width=w,src_height=h)
+    return core.resize.Point(input,w,h,src_top=-top,src_left=-left,src_width=w,src_height=h)
 
 #nnedi3 preview
 def n3pv(*args,**kwargs):
@@ -956,9 +956,9 @@ def hrife(src,ref=None,mode=None,m='709',format=None,rgbh=True):
     s_w,s_h=ref.width,ref.height
     p_w,p_h=ceil(s_w/32)*32,ceil(s_h/32)*32
     if mode=='i' or src.format.color_family==vs.YUV:
-        return src.resize.Bicubic(p_w,p_h,src_width=p_w,src_height=p_h,format=[vs.RGBS,vs.RGBH][rgbh],matrix_in_s=m)
+        return src.resize.Spline64(p_w,p_h,src_width=p_w,src_height=p_h,format=[vs.RGBS,vs.RGBH][rgbh],matrix_in_s=m)
     elif mode=='o' or src.format.color_family==vs.RGB:
-        return src.resize.Bicubic(s_w,s_h,src_width=s_w,src_height=s_h,format=format,matrix_s=m)
+        return src.resize.Spline64(s_w,s_h,src_width=s_w,src_height=s_h,format=format,matrix_s=m)
 
 #can be used in fmtc
 #pointless as we already have yuv (typically), I thought this is only meaningful when dealing with RGB like in the literature (for somewhat faster conversion than traditional matrix maybe) so the situation is like yuv (including opp) is better than RGB but which *reasonable* matrix you use is much less relevant, based on my solely observations though
