@@ -1,4 +1,4 @@
-__version__=str(1735889956/2**31)
+__version__=str(1735890271/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -143,13 +143,13 @@ elast: if using default "lf" func (i.e. passing in a number as lf), this control
 def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,limit=None,lf=None,elast=20,sargs={},aargs={},rargs={},alim_ref=None,alim_cdif=False,**args):
     if resize_pad:
         if isinstance(resize_pad,bool):
-            src=rpclip(src,blksize)
             if isinstance(pref,vs.VideoNode) and pref.width==src.width and pref.height==src.height: pref=rpclip(pref,blksize)
             if isinstance(alim_ref,vs.VideoNode) and alim_ref.width==src.width and alim_ref.height==src.height: pref=rpclip(alim_ref,blksize)
+            src=rpclip(src,blksize)
         elif isinstance(resize_pad,int):
-            src=rpclip(src,resize_pad)
             if isinstance(pref,vs.VideoNode) and pref.width==src.width and pref.height==src.height: pref=rpclip(pref,resize_pad)
             if isinstance(alim_ref,vs.VideoNode) and alim_ref.width==src.width and alim_ref.height==src.height: pref=rpclip(alim_ref,resize_pad)
+            src=rpclip(src,resize_pad)
         else:
             raise ValueError
     mvd_in=isinstance(mvin,dict)
