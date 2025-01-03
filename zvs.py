@@ -1,4 +1,4 @@
-__version__=str(1735759776/2**31)
+__version__=str(1735889731/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -144,10 +144,12 @@ def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=Tru
     if resize_pad:
         if isinstance(resize_pad,bool):
             src=rpclip(src,blksize)
-            if isinstance(pref,vs.VideoNode): pref=rpclip(pref,blksize)
+            if isinstance(pref,vs.VideoNode) and pref.width==src.width and pref.height==src.height: pref=rpclip(pref,blksize)
+            if isinstance(alim_ref,vs.VideoNode) and alim_ref.width==src.width and alim_ref.height==src.height: pref=rpclip(alim_ref,blksize)
         elif isinstance(resize_pad,int):
             src=rpclip(src,resize_pad)
-            if isinstance(pref,vs.VideoNode): pref=rpclip(pref,blksize)
+            if isinstance(pref,vs.VideoNode) and pref.width==src.width and pref.height==src.height: pref=rpclip(pref,resize_pad)
+            if isinstance(alim_ref,vs.VideoNode) and alim_ref.width==src.width and alim_ref.height==src.height: pref=rpclip(alim_ref,resize_pad)
         else:
             raise ValueError
     mvd_in=isinstance(mvin,dict)
