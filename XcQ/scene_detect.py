@@ -225,10 +225,18 @@ def tensor_to_clip(clip: vs.VideoNode, image) -> vs.VideoNode:
         clips=clip,
         selector=lambda n, f: tensor_to_frame(f.copy(), image),
     )
+def box_resizer(clip,w,h,*args,**kwargs):
+    clip=core.fmtc.resample(clip,w,h,kernel='box',css='444')
+    clip=core.resize.Point(clip,*args,**kwargs)
+    return clip
 def prepare_clip(clip,onnx_res,fp16,resizer):
     col_fam=clip.format.color_family
     target_fmt=[vs.RGBS,vs.RGBH][fp16]
-    resizer=functools.partial(core.resize.Bicubic,filter_param_a=-0.3,filter_param_b=0.15) if not callable(resizer) else resizer
+    if not callable(resizer):
+        if not hasattr(core,'fmtc'):
+            resizer=functools.partial(core.resize.Bicubic,filter_param_a=-0.3,filter_param_b=0.15)
+        else:
+            resizer=box_resizer
     resizer=functools.partial(resizer,format=target_fmt)
     if clip.format.id==target_fmt and clip.width==onnx_res[0] and clip.height==onnx_res[1]:
         return clip
