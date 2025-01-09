@@ -1,4 +1,4 @@
-__version__=str(1735890469/2**31)
+__version__=str(1736448858/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1468,6 +1468,8 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
 
     if show=="descale":
         return luma_de
+    elif show=="upscale":
+        return luma_up
     elif show=="mask":
         return mask
     elif show=="both":
@@ -1590,6 +1592,8 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
 
     if show=="descale":
         return luma_de
+    if show=="upscale":
+        return luma_up
     elif show=="mask":
         return mask
     elif show=="both":
@@ -1762,6 +1766,8 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNod
         return core.std.ModifyFrame(mask,[diff,mask],calc)
     elif show.lower()=="descale":
         return descaled #after postfilter_descaled
+    elif show.lower()=="upscale":
+        return upscaled
     elif show.lower()=="both": #result,mask,descaled
         return core.std.ModifyFrame(rescale,[diff,rescale],calc),core.std.ModifyFrame(mask,[diff,mask],calc),descaled
 
@@ -1848,6 +1854,8 @@ def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask
         return core.std.ModifyFrame(mask,[diff,mask],calc)
     elif show.lower()=="descale":
         return descaled #after postfilter_descaled
+    elif show.lower()=="upscale":
+        return upscaled
     elif show.lower()=="both": #result,mask,descaled
         return core.std.ModifyFrame(rescale,[diff,rescale],calc),core.std.ModifyFrame(mask,[diff,mask],calc),descaled
 
