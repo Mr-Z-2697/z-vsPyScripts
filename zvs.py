@@ -1224,11 +1224,12 @@ def simplebitdepth(src,bits,dither='none',float=False):
 #alias
 sb=simplebitdepth
 
+# calculate frame hash and store it in frame props
+def framehash(src, algo = 'sha1'):
 # sha1 is fast on CPUs with sha extension, blake3 with its avx{,2,512} implementation is even faster.
-# perhaps should add crc32 as well, but blake3 is blazing fast, faster than crc32...
+# perhaps should add crc32 as well, but blake3 is blazing fast, best speed is similar to crc32...
 # because somehow it's the "crc32c" who gets into instruction sets.
 # sha1 is almost as fast as you can get with hashlib
-def framehash(src, algo = 'sha1'):
     if algo.lower() == 'blake3':
         import blake3
         def hasher(n, f):
