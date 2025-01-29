@@ -1,4 +1,4 @@
-__version__=str(1736448858/2**31)
+__version__=str(1738146492/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -38,6 +38,7 @@ functions:
 - alpha2clip
 - addsc
 - simplebitdepth (sb for short)
+- framehash
 '''
 
 try:
@@ -1222,6 +1223,32 @@ def simplebitdepth(src,bits,dither='none',float=False):
         return src.resize.Point(format=src.format.replace(sample_type=dst,bits_per_sample=bits),dither_type=dither)
 #alias
 sb=simplebitdepth
+
+# sha1 is fast on CPUs with sha extension, blake3 with its avx{,2,512} implementation is even faster.
+# perhaps should add crc32 as well, but blake3 is blazing fast, faster than crc32...
+# because somehow it's the "crc32c" who gets into instruction sets.
+# sha1 is almost as fast as you can get with hashlib
+def framehash(src, algo = 'sha1'):
+    if algo.lower() == 'blake3':
+        import blake3
+        def hasher(n, f):
+            fout = f.copy()
+            hash = blake3.blake3()
+            for chunk in fout.readchunks():
+                # blake3 complaints about buffer not compatible with u8
+                hash.update(bytes(chunk))
+            fout.props.hash_blake3 = hash.hexdigest()
+            return fout
+    else:
+        import hashlib
+        def hasher(n, f):
+            fout = f.copy()
+            hash = hashlib.sha1()
+            for chunk in fout.readchunks():
+                hash.update(chunk)
+            fout.props.hash_sha1 = hash.hexdigest()
+            return fout
+    return core.std.ModifyFrame(clip = src, clips = src, selector = hasher)
 
 
 ########################################################
