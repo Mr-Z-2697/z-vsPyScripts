@@ -1,4 +1,4 @@
-__version__=str(1738146492/2**31)
+__version__=str(1738257218/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1225,12 +1225,18 @@ def simplebitdepth(src,bits,dither='none',float=False):
 sb=simplebitdepth
 
 # calculate frame hash and store it in frame props
-def framehash(src, algo = 'sha1'):
+def framehash(src, algo = None):
 # sha1 is fast on CPUs with sha extension, blake3 with its avx{,2,512} implementation is even faster.
 # perhaps should add crc32 as well, but blake3 is blazing fast, best speed is similar to crc32...
 # because somehow it's the "crc32c" who gets into instruction sets.
 # sha1 is almost as fast as you can get with hashlib
-    if algo.lower() == 'blake3':
+    if algo is None:
+        try:
+            import blake3
+            algo = 1
+        except:
+            algo = 0
+    if algo in ('blake3', 'BLAKE3', 1):
         import blake3
         def hasher(n, f):
             fout = f.copy()
@@ -1240,7 +1246,7 @@ def framehash(src, algo = 'sha1'):
                 hash.update(bytes(chunk))
             fout.props.hash_blake3 = hash.hexdigest()
             return fout
-    else:
+    elif algo in ('sha1', 'sha-1', 'SHA1', 'SHA-1', 'Secure Hash Algorithm 1', 'Secure Hash Algorithm One', 0):
         import hashlib
         def hasher(n, f):
             fout = f.copy()
