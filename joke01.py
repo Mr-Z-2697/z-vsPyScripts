@@ -33,6 +33,9 @@ def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=
 # i know mvf.Depth can do just want a simpler approach
 # is it still the depth we want if chroma sign is considered? what about the range of values?
 # brain cells are dying
+# cs: consider chroma sign
+# cs2: is a free upgrade to CS:GO
+# cs2: half the scaling for +-0.5 range
 def debit(src,depth=1,dither=0,fulls=None,fulld=None,cs=False,cs2=False,count=None):
     if depth>=8 or (count!=None and count>=256):
         raise ValueError("use normal dither bro")
@@ -43,7 +46,7 @@ def debit(src,depth=1,dither=0,fulls=None,fulld=None,cs=False,cs2=False,count=No
         src=core.resize.Point(src,format=src.format.replace(sample_type=vs.INTEGER,bits_per_sample=16),range_s='full')
         fulls=True
     if src.format.bits_per_sample < 16:
-        src=core.std.Expr(src,'x {} *'.format(2**(16-src.format.bits_per_sample)),src.format.replace(bits_per_sample=16))
+        src=zvs.simplebitdepth(src,16)
     if isinstance(dither,int):
         rehtid=lambda x:x.fmtc.bitdepth(bits=8,dmode=dither)
     elif isinstance(dither,str):
