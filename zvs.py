@@ -1,4 +1,4 @@
-__version__=str(1738257218/2**31)
+__version__=str(1738946646/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1208,13 +1208,18 @@ def DoG(src,s1=1,s2=2,grayscale=True,abs=True):
 #alias
 dog=DoG
 
-
-def simplebitdepth(src,bits,dither='none',float=False):
+# random is a predefined static blue noise pattern, not really random. which is good <3
+def simplebitdepth(src,bits,dither=None,float=False):
     if isinstance(dither,int):
         dither={0:'none',1:'ordered',2:'random',3:'error_diffusion'}[dither]
     sb=src.format.bits_per_sample
     sst=src.format.sample_type
     dst=(vs.INTEGER,vs.FLOAT)[float] #gocha
+    if dither is None:
+        dither='none'
+        if bits<sb:
+            if sst!=vs.FLOAT and dst!=vs.FLOAT:
+                dither='random'
     if sb<bits and sst==dst:
         return core.std.Expr(src,'x {} *'.format(2**(bits-src.format.bits_per_sample)),src.format.replace(bits_per_sample=bits))
     elif sb==bits and sst==dst:
