@@ -1,4 +1,4 @@
-__version__=str(1738946646/2**31)
+__version__=str(1739246649/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -488,7 +488,7 @@ def n3pv(*args,**kwargs):
     nsize=kwargs.get('nsize',0)
     qual=kwargs.get('qual',1)
     mode=kwargs.get('mode',nnrs_mode_default)
-    int_=kwargs.get('int',True)
+    int_=kwargs.get('int',False)
     depth=kwargs.get('depth',8)
     mats=kwargs.get('mats')
     fulls=kwargs.get('fulls')
@@ -1209,7 +1209,12 @@ def DoG(src,s1=1,s2=2,grayscale=True,abs=True):
 dog=DoG
 
 # random is a predefined static blue noise pattern, not really random. which is good <3
-def simplebitdepth(src,bits,dither=None,float=False):
+def simplebitdepth(src,bits,dither=None,float=None):
+    if float is None:
+        if bits==32:
+            float=True
+        else:
+            float=False
     if isinstance(dither,int):
         dither={0:'none',1:'ordered',2:'random',3:'error_diffusion'}[dither]
     sb=src.format.bits_per_sample
