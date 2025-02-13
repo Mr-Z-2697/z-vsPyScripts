@@ -1,4 +1,4 @@
-__version__=str(1739246649/2**31)
+__version__=str(1739467539/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1224,7 +1224,7 @@ def simplebitdepth(src,bits,dither=None,float=None):
         dither='none'
         if bits<sb:
             if sst!=vs.FLOAT and dst!=vs.FLOAT:
-                dither='random'
+                dither='ordered'
     if sb<bits and sst==dst:
         return core.std.Expr(src,'x {} *'.format(2**(bits-src.format.bits_per_sample)),src.format.replace(bits_per_sample=bits))
     elif sb==bits and sst==dst:
