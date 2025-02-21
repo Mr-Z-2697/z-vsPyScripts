@@ -1,7 +1,7 @@
 import vapoursynth as vs
 core=vs.core
 import zvs
-__all__=['lrnoise','debit']
+__all__=['lrnoise','debit','naive32k','naive32i']
 
 def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=False,mdg=False,azmdg={},cdif=False,fnoise=None):
     src=src.fmtc.bitdepth(bits=16)
@@ -74,3 +74,54 @@ def debit(src,depth=1,dither=0,fulls=None,fulld=None,cs=False,cs2=False,count=No
         last=zvs.setrange(last,'rm')
         last=last.resize.Point(range_in_s='full',range_s='limited')
     return last
+
+def naive32k(src,shift=0):
+    clip=core.std.SeparateFields(src,tff=1)
+    _tf=clip[::2]
+    _bf=clip[1::2]
+    match shift:
+        case 0:
+            selector_tf=[0,1,1,2,3] #1
+            selector_bf=[0,1,2,3,3] #3
+        case 1:
+            selector_tf=[0,1,2,2,3] #2
+            selector_bf=[0,0,1,2,3] #0
+        case 2:
+            selector_tf=[0,1,2,3,3] #3
+            selector_bf=[0,1,1,2,3] #1
+        case 3:
+            selector_tf=[0,0,1,2,3] #0
+            selector_bf=[0,1,2,2,3] #2
+    _tf=_tf.std.SelectEvery(4,selector_tf)
+    _bf=_bf.std.SelectEvery(4,selector_bf)
+    clip=core.std.Interleave([_tf,_bf])
+    clip=core.std.DoubleWeave(clip)[::2]
+    clip=clip.std.SetFieldBased(2)
+    return clip
+
+def naive32i(src,shift=0):
+    clip=core.std.SeparateFields(src,tff=1)
+    _tf=clip[::2]
+    _bf=clip[1::2]
+    match shift:
+        case 0:
+            selector_tf=[0,1,3,4] #2
+            selector_bf=[0,1,2,3] #4
+        case 1:
+            selector_tf=[0,1,2,4] #3
+            selector_bf=[1,2,3,4] #0
+        case 2:
+            selector_tf=[0,1,2,3] #4
+            selector_bf=[0,2,3,4] #1
+        case 3:
+            selector_tf=[1,2,3,4] #0
+            selector_bf=[0,1,3,4] #2
+        case 4:
+            selector_tf=[0,2,3,4] #1
+            selector_bf=[0,1,2,4] #3
+    _tf=_tf.std.SelectEvery(5,selector_tf)
+    _bf=_bf.std.SelectEvery(5,selector_bf)
+    clip=core.std.Interleave([_tf,_bf])
+    clip=core.std.DoubleWeave(clip)[::2]
+    clip=clip.std.SetFieldBased(0)
+    return clip
