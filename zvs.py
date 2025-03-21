@@ -1,4 +1,4 @@
-__version__=str(1742545255/2**31)
+__version__=str(1742593118/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1279,7 +1279,7 @@ def bm3d(clip:vs.VideoNode,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,
     clip=core.fmtc.bitdepth(clip,bits=32)
     iref=core.fmtc.bitdepth(iref,bits=32) if isinstance(iref,vs.VideoNode) else None
     if chroma is True and clip.format.color_family!=vs.YUV:
-        raise ValueError("'chroma' should be used with YUV")
+        raise ValueError("YUV should be used with 'chroma'")
 
     if radius2 is None:
         radius2=radius
@@ -1396,7 +1396,7 @@ def bm3d(clip:vs.VideoNode,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,
 def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=0,ps_num=2,ps_range=4,chroma=False,fast=True,extractor_exp=bm3d_extractor_exp_default,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",vt=0):
     if chroma and clip.format.id !=vs.YUV444PS:
         if clip.format.color_family!=vs.YUV:
-            raise ValueError("'chroma' should be used with YUV")
+            raise ValueError("YUV should be used with 'chroma'")
         clip_down=go444keepuv(clip)
         ref_down=go444keepuv(ref) if ref!=None else None
         chroma_fullres=False
@@ -1420,7 +1420,7 @@ def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=
 
     if chroma and clip.format.id !=vs.YUV444PS:
         if clip.format.color_family!=vs.YUV:
-            raise ValueError("'chroma' should be used with YUV")
+            raise ValueError("YUV should be used with 'chroma'")
         chroma_clip=bm3d_core(clip_down,ref_down,mode,sigma,block_step,bm_range,radius,ps_num,ps_range,chroma,fast,extractor_exp,device_id,bm_error_s,transform_2d_s,transform_1d_s,vt)
         ret=core.std.ShufflePlanes([fullres,chroma_clip],[0,1,2],vs.YUV)
     else:
