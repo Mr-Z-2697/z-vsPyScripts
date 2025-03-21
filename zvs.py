@@ -1,4 +1,4 @@
-__version__=str(1742530926/2**31)
+__version__=str(1742531360/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1403,12 +1403,12 @@ def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",pre
 
 #copy-paste from xyx98's xvs
 def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=0,ps_num=2,ps_range=4,chroma=False,fast=True,extractor_exp=bm3d_extractor_exp_default,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",vt=0):
-    if chroma is True and clip.format.id !=vs.YUV444PS:
+    if chroma and clip.format.id !=vs.YUV444PS:
         clip_down=go444keepuv(clip)
         ref_down=go444keepuv(ref) if ref!=None else None
         chroma_fullres=False
     else:
-        chroma_fullres=True
+        chroma_fullres=chroma
 
     if mode not in ["cpu","cuda","cuda_rtc"]:
         raise ValueError("mode must be cpu,or cuda,or cuda_rtc")
@@ -1425,7 +1425,7 @@ def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=
             fullres=core.bm3dcuda_rtc.BM3Dv2(clip,ref=ref,sigma=sigma,block_step=block_step,bm_range=bm_range,radius=radius,ps_num=ps_num,ps_range=ps_range,chroma=chroma_fullres,fast=fast,extractor_exp=extractor_exp,device_id=device_id,bm_error_s=bm_error_s,transform_2d_s=transform_2d_s,transform_1d_s=transform_1d_s)
         fullres=core.bm3dcuda_rtc.BM3D(clip,ref=ref,sigma=sigma,block_step=block_step,bm_range=bm_range,radius=radius,ps_num=ps_num,ps_range=ps_range,chroma=chroma_fullres,fast=fast,extractor_exp=extractor_exp,device_id=device_id,bm_error_s=bm_error_s,transform_2d_s=transform_2d_s,transform_1d_s=transform_1d_s)
 
-    if chroma is True and clip.format.id !=vs.YUV444PS:
+    if chroma and clip.format.id !=vs.YUV444PS:
         chroma_clip=bm3d_core(clip_down,ref_down,mode,sigma,block_step,bm_range,radius,ps_num,ps_range,chroma,fast,extractor_exp,device_id,bm_error_s,transform_2d_s,transform_1d_s,vt)
         ret=core.std.ShufflePlanes([fullres,chroma_clip],[0,1,2],vs.YUV)
     else:
