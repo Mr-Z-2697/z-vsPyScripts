@@ -1,4 +1,4 @@
-__version__=str(1742531360/2**31)
+__version__=str(1742538706/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -960,15 +960,6 @@ def hrife(src,ref=None,mode=None,m='709',format=None,rgbh=True):
         return src.resize.Spline64(p_w,p_h,src_width=p_w,src_height=p_h,format=[vs.RGBS,vs.RGBH][rgbh],matrix_in_s=m)
     elif mode=='o' or src.format.color_family==vs.RGB:
         return src.resize.Spline64(s_w,s_h,src_width=s_w,src_height=s_h,format=format,matrix_s=m)
-
-#can be used in fmtc
-#pointless as we already have yuv (typically), I thought this is only meaningful when dealing with RGB like in the literature (for somewhat faster conversion than traditional matrix maybe) so the situation is like yuv (including opp) is better than RGB but which *reasonable* matrix you use is much less relevant, based on my solely observations though
-crgb2opp=[1/3,1/3,1/3,0,
-1/2,-1/2,0,0,
-1/4,1/4,-1/2,0]
-copp2rgb=[1,1,2/3,0,
-1,-1,2/3,0,
-1,0,-4/3,0]
 
 
 def go444keepuv(src,dir='down',clc=True,left=True,top=False,resampler=None):
