@@ -1,4 +1,4 @@
-__version__=str(1742540456/2**31)
+__version__=str(1742545255/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1270,11 +1270,11 @@ def framehash(src, algo = None):
 #iref: initial ref
 #keepfloat: like what it said
 #vt: v-bm3d type, 0 for good old bm3dcuda+bm3d.VAggregate, 1 for bm3dcuda.BM3Dv2
-def bm3d(clip:vs.VideoNode,iref=None,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,mode=bm3d_mode_default,radius=0,radius2=None,chroma=False,fast=True,
+def bm3d(clip:vs.VideoNode,sigma=[3,3,3],sigma2=None,preset="fast",preset2=None,mode=bm3d_mode_default,radius=0,radius2=None,chroma=False,fast=True,
             block_step1=None,bm_range1=None, ps_num1=None, ps_range1=None,
             block_step2=None,bm_range2=None, ps_num2=None, ps_range2=None,
             extractor_exp=bm3d_extractor_exp_default,device_id=0,bm_error_s="SSD",transform_2d_s="DCT",transform_1d_s="DCT",
-            refine=1,dmode=0,iterates=False,keepfloat=False,vt=0):
+            refine=1,dmode=0,iterates=False,keepfloat=False,vt=0,iref=None):
     bits=clip.format.bits_per_sample
     clip=core.fmtc.bitdepth(clip,bits=32)
     iref=core.fmtc.bitdepth(iref,bits=32) if isinstance(iref,vs.VideoNode) else None
