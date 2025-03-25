@@ -1,4 +1,4 @@
-__version__=str(1742939687/2**31)
+__version__=str(1742940456/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -950,7 +950,7 @@ def fmvfps(src,num=60,den=1,blend=True):
     return core.mv.BlockFPS(src,sup,mv,mv2,num,den,mode=0,blend=blend)
 
 #it's a helper
-def hrife(src,ref=None,mode=None,m='709',format=None,rgbh=True,base=64,pad=0,color=None):
+def hrife(src,ref=None,mode=None,m='709',format=None,rgbh=True,base=64,pad=1,color=None):
     from math import ceil
     if ref is None:ref=src
     if format is None:format=ref.format
