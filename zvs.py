@@ -1,4 +1,4 @@
-__version__=str(1742593118/2**31)
+__version__=str(1742939687/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -950,17 +950,27 @@ def fmvfps(src,num=60,den=1,blend=True):
     return core.mv.BlockFPS(src,sup,mv,mv2,num,den,mode=0,blend=blend)
 
 #it's a helper
-def hrife(src,ref=None,mode=None,m='709',format=None,rgbh=True):
+def hrife(src,ref=None,mode=None,m='709',format=None,rgbh=True,base=64,pad=0,color=None):
     from math import ceil
     if ref is None:ref=src
     if format is None:format=ref.format
     s_w,s_h=ref.width,ref.height
-    p_w,p_h=ceil(s_w/32)*32,ceil(s_h/32)*32
-    if mode=='i' or src.format.color_family==vs.YUV:
-        return src.resize.Spline64(p_w,p_h,src_width=p_w,src_height=p_h,format=[vs.RGBS,vs.RGBH][rgbh],matrix_in_s=m)
-    elif mode=='o' or src.format.color_family==vs.RGB:
-        return src.resize.Spline64(s_w,s_h,src_width=s_w,src_height=s_h,format=format,matrix_s=m)
-
+    p_w,p_h=ceil(s_w/base)*base,ceil(s_h/base)*base
+    if pad:
+        if mode=='i' or src.format.color_family==vs.YUV:
+            ret=setmatrix(src,'rm')
+            ret=ret.std.AddBorders(0,p_w-s_w,0,p_h-s_h,color=color)
+            ret=ret.resize.Spline64(format=[vs.RGBS,vs.RGBH][rgbh],matrix_in_s=m)
+        elif mode=='o' or src.format.color_family==vs.RGB:
+            ret=src.resize.Spline64(format=format,matrix_s=m)
+            ret=ret.std.Crop(0,p_w-s_w,0,p_h-s_h)
+    else:
+        if mode=='i' or src.format.color_family==vs.YUV:
+            ret=setmatrix(src,'rm')
+            ret=ret.resize.Spline64(p_w,p_h,src_width=p_w,src_height=p_h,format=[vs.RGBS,vs.RGBH][rgbh],matrix_in_s=m)
+        elif mode=='o' or src.format.color_family==vs.RGB:
+            ret=src.resize.Spline64(s_w,s_h,src_width=s_w,src_height=s_h,format=format,matrix_s=m)
+    return ret
 
 def go444keepuv(src,dir='down',clc=True,left=True,top=False,resampler=None):
     sw,sh=src.width,src.height
