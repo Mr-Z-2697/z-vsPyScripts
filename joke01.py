@@ -57,6 +57,7 @@ def debit(src,depth=1,dither=0,fulls=None,fulld=None,cs=False,cs2=False,count=No
         count=2**depth
     scaling=255/(count-1)
     scalingc=scaling if not cs2 else scaling/2
+    cs=cs or cs2
     last=src
     if not fulls:
         last=zvs.setrange(last,'rm')
