@@ -7,3 +7,4 @@ import mvsfunc as mvf
 import havsfunc as haf
 import muvsfunc as muf
 import vsTAAmbk as taa
+import joke01

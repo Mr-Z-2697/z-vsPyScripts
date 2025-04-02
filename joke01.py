@@ -4,7 +4,7 @@ import zvs
 __all__=['lrnoise','debit','naive32k','naive32i']
 
 def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=False,mdg=False,azmdg={},cdif=False,fnoise=None):
-    src=src.fmtc.bitdepth(bits=16)
+    src=zvs.simplebitdepth(src,16)
     za={'thsad':1000,'truemotion':True}
     za.update(azmdg)
     last=src
@@ -38,7 +38,7 @@ def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=
 # cs2: half the scaling for +-0.5 range
 def debit(src,depth=1,dither=0,fulls=None,fulld=None,cs=False,cs2=False,count=None):
     if depth>=8 or (count!=None and count>=256):
-        raise ValueError("use normal dither bro")
+        raise ValueError("use normal dither for >8bit bro")
     isrgb=src.format.color_family==vs.RGB
     if fulls==None: fulls=True if isrgb else False
     if fulld==None: fulld=True if isrgb else False
@@ -50,7 +50,7 @@ def debit(src,depth=1,dither=0,fulls=None,fulld=None,cs=False,cs2=False,count=No
     if isinstance(dither,int):
         rehtid=lambda x:x.fmtc.bitdepth(bits=8,dmode=dither)
     elif isinstance(dither,str):
-        rehtid=lambda x:x.resize.Point(format=x.format.replace(bits_per_sample=8),dither_type=dither)
+        rehtid=lambda x:zvs.simplebitdepth(x,8,dither)
     elif callable(dither):
         rehtid=dither
     if count==None:
