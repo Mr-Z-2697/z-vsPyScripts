@@ -36,12 +36,14 @@ def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=
 # cs: consider chroma sign
 # cs2: is a free upgrade to CS:GO
 # cs2: half the scaling for +-0.5 range
-def debit(src,depth=1,dither=0,fulls=None,fulld=None,cs=False,cs2=False,count=None):
+def debit(src,depth=1,dither=0,fulls=None,fulld=None,cs=None,cs2=None,count=None):
     if depth>=8 or (count!=None and count>=256):
         raise ValueError("use normal dither for >8bit bro")
     isrgb=src.format.color_family==vs.RGB
     if fulls==None: fulls=True if isrgb else False
     if fulld==None: fulld=True if isrgb else False
+    if cs==None: cs=False if isrgb else True
+    if cs2==None: cs2=False
     if src.format.sample_type==vs.FLOAT:
         src=core.resize.Point(src,format=src.format.replace(sample_type=vs.INTEGER,bits_per_sample=16),range_s='full')
         fulls=True
