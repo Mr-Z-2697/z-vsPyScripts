@@ -1,4 +1,4 @@
-__version__=str(1744140842/2**31)
+__version__=str(1746278540/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1268,6 +1268,14 @@ def framehash(src, algo = None):
             fout.props.hash_sha1 = hash.hexdigest()
             return fout
     return core.std.ModifyFrame(clip = src, clips = src, selector = hasher)
+
+
+def outputs(clips):
+    if isinstance(clips,(list,tuple)):
+        for index,node in enumerate(clips):
+            node.set_output(index)
+    else:
+        clips.set_output()
 
 
 ########################################################
