@@ -128,3 +128,17 @@ def naive32i(src,shift=0):
     clip=core.std.DoubleWeave(clip)[::2]
     clip=clip.std.SetFieldBased(0)
     return clip
+
+# the grey from black and white
+# prepare your frame props btw, im relying on auto selection of core.resize
+def grey(src):
+    if src.format.color_family==vs.GRAY:
+        return src
+    elif src.format.color_family==vs.YUV:
+        clip=core.resize.Spline64(src,format=vs.RGBS)
+    else:
+        clip=src
+    clip=core.resize.Point(clip,transfer_s='linear')
+    clip=core.resize.Point(clip,format=vs.GRAYS,matrix_s='709')
+    clip=core.resize.Point(clip,transfer=src.get_frame(0).props._Transfer)
+    return clip
