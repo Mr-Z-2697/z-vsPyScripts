@@ -131,14 +131,16 @@ def naive32i(src,shift=0):
 
 # the grey from black and white
 # prepare your frame props btw, im relying on auto selection of core.resize
-def grey(src,fp32=1):
+def grey(src,fp32=1,matrix='709'):
     if src.format.color_family==vs.GRAY:
         return src
     elif src.format.color_family==vs.YUV:
         clip=core.resize.Spline64(src,format=vs.RGBS if fp32 else vs.RGB48)
     else:
         clip=zvs.sb(src,32 if fp32 else 16)
+    matrixvaldict={'rgb':0,'709':1,'unspec':2,'fcc':4,'470bg':5,'170m':6,'240m':7,'ycgco':8,'2020ncl':9,'2020cl':10,'ydzdx':11,'chromancl':12,'chromacl':13,'ictcp':14,'601':5,709:1,601:5}
+    matrixval=matrixvaldict.get(matrix)
     clip=core.resize.Point(clip,transfer_s='linear')
-    clip=core.resize.Point(clip,format=vs.GRAYS if fp32 else vs.GRAY16,matrix_s='709')
+    clip=core.resize.Point(clip,format=vs.GRAYS if fp32 else vs.GRAY16,matrix=matrixval)
     clip=core.resize.Point(clip,transfer=src.get_frame(0).props._Transfer)
     return clip
