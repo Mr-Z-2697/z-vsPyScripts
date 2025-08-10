@@ -1,4 +1,4 @@
-__version__=str(1754868808/2**31)
+__version__=str(1754870048/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1237,7 +1237,7 @@ def simplebitdepth(src,bits,dither=None,float=None):
 sb=simplebitdepth
 
 # calculate frame hash and store it in frame props
-def framehash(src, algo = None, seed = 0):
+def framehash(src, algo = None, trunc = None, seed = 0):
 # sha1 is fast on CPUs with sha extension, blake3 with its avx{,2,512} implementation is even faster.
 # perhaps should add crc32 as well, but blake3 is blazing fast, best speed is similar to crc32...
 # because somehow it's the "crc32c" who gets into x86 SSE4.2.
@@ -1256,7 +1256,7 @@ def framehash(src, algo = None, seed = 0):
             for chunk in f.readchunks():
                 # blake3 complaints about buffer not compatible with u8
                 hash.update(chunk.cast('B'))
-            fout.props.hash_blake3 = hash.hexdigest()
+            fout.props.hash_blake3 = hash.hexdigest()[:trunc]
             return fout
     elif algo in ('xxh', 'xxh3', 'XXH3', 2):
         import xxhash
@@ -1265,7 +1265,7 @@ def framehash(src, algo = None, seed = 0):
             hash = xxhash.xxh3_128(seed=seed)
             for chunk in f.readchunks():
                 hash.update(chunk)
-            fout.props.hash_xxh3 = hash.hexdigest()
+            fout.props.hash_xxh3 = hash.hexdigest()[:trunc]
             return fout
     elif algo in ('sha1', 'sha-1', 'SHA1', 'SHA-1', 'Secure Hash Algorithm 1', 'Secure Hash Algorithm One', 0):
         import hashlib
@@ -1274,7 +1274,7 @@ def framehash(src, algo = None, seed = 0):
             hash = hashlib.sha1()
             for chunk in f.readchunks():
                 hash.update(chunk)
-            fout.props.hash_sha1 = hash.hexdigest()
+            fout.props.hash_sha1 = hash.hexdigest()[:trunc]
             return fout
     return core.std.ModifyFrame(clip = src, clips = src, selector = hasher)
 
