@@ -1,4 +1,4 @@
-__version__=str(1754867804/2**31)
+__version__=str(1754868808/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1253,9 +1253,9 @@ def framehash(src, algo = None, seed = 0):
         def hasher(n, f):
             fout = f.copy()
             hash = blake3.blake3()
-            for chunk in fout.readchunks():
+            for chunk in f.readchunks():
                 # blake3 complaints about buffer not compatible with u8
-                hash.update(bytes(chunk))
+                hash.update(chunk.cast('B'))
             fout.props.hash_blake3 = hash.hexdigest()
             return fout
     elif algo in ('xxh', 'xxh3', 'XXH3', 2):
@@ -1263,7 +1263,7 @@ def framehash(src, algo = None, seed = 0):
         def hasher(n, f):
             fout = f.copy()
             hash = xxhash.xxh3_128(seed=seed)
-            for chunk in fout.readchunks():
+            for chunk in f.readchunks():
                 hash.update(chunk)
             fout.props.hash_xxh3 = hash.hexdigest()
             return fout
@@ -1272,7 +1272,7 @@ def framehash(src, algo = None, seed = 0):
         def hasher(n, f):
             fout = f.copy()
             hash = hashlib.sha1()
-            for chunk in fout.readchunks():
+            for chunk in f.readchunks():
                 hash.update(chunk)
             fout.props.hash_sha1 = hash.hexdigest()
             return fout
