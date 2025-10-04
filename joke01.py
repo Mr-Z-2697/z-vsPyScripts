@@ -155,8 +155,8 @@ def grey(src,fp32=1,matrix='709',linearize=1):
     return clip
 
 # "lens blur"
-def lamb(clip,radius):
-    n=33
+def lamb(clip,radius=10):
+    n=33 #acts like an upper limit
     o=int(n/2)
     w=0
     e=''
@@ -164,7 +164,7 @@ def lamb(clip,radius):
         for j in range(n):
             x=j-o
             y=i-o
-            if (x*x)+(y*y) <= 10**2:
+            if (x*x)+(y*y) <= radius**2:
                 e+=f" x[{x},{y}]"
                 w+=1
     e+=" +" * (w-1)
