@@ -153,3 +153,20 @@ def grey(src,fp32=1,matrix='709',linearize=1):
         clip=core.resize.Point(clip,format=vs.GRAYS if fp32 else vs.GRAY16,matrix=matrixval)
     if linearize: clip=core.resize.Point(clip,transfer=src.get_frame(0).props._Transfer)
     return clip
+
+# "lens blur"
+def lamb(clip,radius):
+    n=33
+    o=int(n/2)
+    w=0
+    e=''
+    for i in range(n):
+        for j in range(n):
+            x=j-o
+            y=i-o
+            if (x*x)+(y*y) <= 10**2:
+                e+=f" x[{x},{y}]"
+                w+=1
+    e+=" +" * (w-1)
+    e+=f" {w} /"
+    return core.akarin.Expr(clip,e)
