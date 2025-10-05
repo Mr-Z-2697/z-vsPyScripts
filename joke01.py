@@ -155,27 +155,34 @@ def grey(src,fp32=1,matrix='709',linearize=1):
     return clip
 
 # "lens blur"
-def lamb(clip,radius=10,shape=None):
+def lamb(clip,radius=10,shape=None,ss=True):
     if shape:
         import shapely
         p=shapely.Polygon(shape)
     n=33 #acts like an upper limit
     o=int(n/2)
-    w=0
-    e=''
-    for i in range(n):
-        for j in range(n):
-            x=j-o
-            y=i-o
-            if shape:
-                pt=shapely.Point(x,y)
-                if pt.within(p) or pt.touches(p):
-                    e+=f" x[{x},{y}]"
-                    w+=1
-            else:
-                if (x*x)+(y*y) <= radius**2:
-                    e+=f" x[{x},{y}]"
-                    w+=1
-    e+=" +" * (w-1)
-    e+=f" {w} /"
-    return core.akarin.Expr(clip,e)
+    def meow(sx=1,sy=1): #this is what lambs sound like
+        w=0
+        e=''
+        for i in range(n):
+            for j in range(n):
+                x=j-o
+                y=i-o
+                xs=x*sx
+                ys=y*sy
+                if shape:
+                    pt=shapely.Point(xs,ys)
+                    if pt.within(p) or pt.touches(p):
+                        e+=f" x[{x},{y}]"
+                        w+=1
+                else:
+                    if (xs*xs)+(ys*ys) <= radius**2:
+                        e+=f" x[{x},{y}]"
+                        w+=1
+        e+=" +" * (w-1)
+        e+=f" {w} /"
+        return e
+    if clip.format.color_family==vs.YUV and ss:
+        return core.akarin.Expr(clip,[meow(),meow(2**clip.format.subsampling_w,2**clip.format.subsampling_h)])
+    else:
+        return core.akarin.Expr(clip,meow())
