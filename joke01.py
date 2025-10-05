@@ -155,7 +155,10 @@ def grey(src,fp32=1,matrix='709',linearize=1):
     return clip
 
 # "lens blur"
-def lamb(clip,radius=10):
+def lamb(clip,radius=10,shape=None):
+    if shape:
+        import shapely
+        p=shapely.Polygon(shape)
     n=33 #acts like an upper limit
     o=int(n/2)
     w=0
@@ -164,9 +167,15 @@ def lamb(clip,radius=10):
         for j in range(n):
             x=j-o
             y=i-o
-            if (x*x)+(y*y) <= radius**2:
-                e+=f" x[{x},{y}]"
-                w+=1
+            if shape:
+                pt=shapely.Point(x,y)
+                if pt.within(p) or pt.touches(p):
+                    e+=f" x[{x},{y}]"
+                    w+=1
+            else:
+                if (x*x)+(y*y) <= radius**2:
+                    e+=f" x[{x},{y}]"
+                    w+=1
     e+=" +" * (w-1)
     e+=f" {w} /"
     return core.akarin.Expr(clip,e)
