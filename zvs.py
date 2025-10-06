@@ -1,4 +1,4 @@
-__version__=str(1754870048/2**31)
+__version__=str(1759745534/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -658,7 +658,7 @@ def dft(src,d=10,spectrum=False,split=True,linear='1886',shift=True):
         np.copyto(np.asarray(fout[0]),Stack)
         return fout
     stack=core.std.StackVertical([src]*(2+spectrum))
-    stack=core.std.ModifyFrame(stack,stack,partial(dft,h=src.height))
+    stack=core.std.FrameEval(stack,lambda n:core.std.ModifyFrame(stack,stack,partial(dft,h=src.height)))
     if not split:
         return stack
     mag=stack.std.Crop(bottom=src.height*(1+spectrum))
@@ -686,7 +686,7 @@ def idft(mag,phase,linear='1886',ishift=True):
         fr=cv2.normalize(fr,None,f[0].props.PlaneStatsMin,f[0].props.PlaneStatsMax,cv2.NORM_MINMAX,dtype=cv2.CV_32F)
         np.copyto(np.asarray(fout[0]),fr)
         return fout
-    last=core.std.ModifyFrame(mag,[mag,phase],idft)
+    last=core.std.FrameEval(mag,lambda n:core.std.ModifyFrame(mag,[mag,phase],idft))
     if linear is not False:
         last=last.fmtc.transfer(transs='linear',transd=linear)
     return last
@@ -703,7 +703,7 @@ def dct(src):
         tr=cv2.dct(tr)
         np.copyto(np.asarray(fout[0]),tr)
         return fout
-    return core.std.ModifyFrame(src,src,dct)
+    return core.std.FrameEval(src,lambda n:core.std.ModifyFrame(src,src,dct))
 
 
 def idct(src):
@@ -717,7 +717,7 @@ def idct(src):
         tr=cv2.idct(tr)
         np.copyto(np.asarray(fout[0]),tr)
         return fout
-    return core.std.ModifyFrame(src,src,idct)
+    return core.std.FrameEval(src,lambda n:core.std.ModifyFrame(src,src,idct))
 
 #I don't even know what this do, will likely be abandoned
 def dwt(src,w='Haar'):
@@ -732,7 +732,7 @@ def dwt(src,w='Haar'):
         tr=np.concatenate([np.concatenate([a,v]),np.concatenate([h,d])],axis=1)
         np.copyto(np.asarray(fout[0]),np.float32(tr))
         return fout
-    return core.std.ModifyFrame(src,src,partial(dwt,w=w))
+    return core.std.FrameEval(src,lambda n:core.std.ModifyFrame(src,src,partial(dwt,w=w)))
 
 
 def idwt(src,w='Haar'):
@@ -748,7 +748,7 @@ def idwt(src,w='Haar'):
         tr=pywt.idwt2([a,(h,v,d)],w)
         np.copyto(np.asarray(fout[0]),np.float32(tr))
         return fout
-    return core.std.ModifyFrame(src,src,partial(dwt,w=w))
+    return core.std.FrameEval(src,lambda n:core.std.ModifyFrame(src,src,partial(dwt,w=w)))
 
 #badly scaled border detect
 def badlyscaledborderdetect(src,left=True,right=True,top=True,bottom=True,conditionmode='or',valuemode='avg',showfrac=False,thr=0.9,thrmode='<',leftline1pos=0,leftline2pos=1,rightline1pos=0,rightline2pos=1,topline1pos=0,topline2pos=1,bottomline1pos=0,bottomline2pos=1):
@@ -1276,7 +1276,7 @@ def framehash(src, algo = None, trunc = None, seed = 0):
                 hash.update(chunk)
             fout.props.hash_sha1 = hash.hexdigest()[:trunc]
             return fout
-    return core.std.ModifyFrame(clip = src, clips = src, selector = hasher)
+    return core.std.FrameEval(src, lambda n: core.std.ModifyFrame(clip = src, clips = src, selector = hasher))
 
 
 def outputs(clips):
