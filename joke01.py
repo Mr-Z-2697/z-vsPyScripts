@@ -155,7 +155,8 @@ def grey(src,fp32=1,matrix='709',linearize=1):
     return clip
 
 # "lens blur"
-def lamb(clip,radius=10,shape=None,ss=True):
+def lamb(clip,radius=10,shape=None,ss=True,partial=False):
+    import math
     if shape:
         import shapely
         p=shapely.Polygon(shape)
@@ -163,6 +164,7 @@ def lamb(clip,radius=10,shape=None,ss=True):
     o=int(n/2)
     def meow(sx=1,sy=1): #this is what lambs sound like
         w=0
+        c=0
         e=''
         for i in range(n):
             for j in range(n):
@@ -175,11 +177,23 @@ def lamb(clip,radius=10,shape=None,ss=True):
                     if pt.within(p) or pt.touches(p):
                         e+=f" x[{x},{y}]"
                         w+=1
+                        c+=1
                 else:
                     if (xs*xs)+(ys*ys) <= radius**2:
                         e+=f" x[{x},{y}]"
                         w+=1
-        e+=" +" * (w-1)
+                        c+=1
+                    elif partial:
+                        xm=math.copysign(abs(xs)-sx,xs)
+                        ym=math.copysign(abs(ys)-sy,ys)
+                        if (xm*xm)+(ym*ym) <= radius**2:
+                            d=radius-(xm*xm+ym*ym)**.5
+                            r=d/(sx*sx+sy*sy)**.5 #approximation
+                            if r>0.01:
+                                e+=f" x[{x},{y}] {r} *"
+                                w+=r
+                                c+=1
+        e+=" +" * (c-1)
         e+=f" {w} /"
         return e
     if clip.format.color_family==vs.YUV and ss:
