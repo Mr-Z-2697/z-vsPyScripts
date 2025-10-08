@@ -189,6 +189,7 @@ def lamb(clip,radius=10,shape=None,ss=True,partial=False):
                         if (xm*xm)+(ym*ym) <= radius**2:
                             d=radius-(xm*xm+ym*ym)**.5
                             r=d/(sx*sx+sy*sy)**.5 #approximation
+                            r=r*r
                             if r>0.01:
                                 e+=f" x[{x},{y}] {r} *"
                                 w+=r
