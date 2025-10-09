@@ -198,6 +198,6 @@ def lamb(clip,radius=10,shape=None,ss=True,partial=False):
         e+=f" {w} /"
         return e
     if clip.format.color_family==vs.YUV and ss:
-        return core.akarin.Expr(clip,[meow(),meow(2**clip.format.subsampling_w,2**clip.format.subsampling_h)])
+        return core.llvmexpr.Expr(clip,[meow(),meow(2**clip.format.subsampling_w,2**clip.format.subsampling_h)],opt_level=1)
     else:
-        return core.akarin.Expr(clip,meow())
+        return core.llvmexpr.Expr(clip,meow(),opt_level=1)
