@@ -155,7 +155,7 @@ def grey(src,fp32=1,matrix='709',linearize=1):
     return clip
 
 # "lens blur"
-def lamb(clip,radius=10,shape=None,ss=True,partial=False):
+def lamb(clip,radius=10,shape=None,ss=True,partial=False,y5g=0):
     import math
     if shape:
         import shapely
@@ -198,6 +198,12 @@ def lamb(clip,radius=10,shape=None,ss=True,partial=False):
         e+=f" {w} /"
         return e
     if clip.format.color_family==vs.YUV and ss:
-        return core.llvmexpr.Expr(clip,[meow(),meow(2**clip.format.subsampling_w,2**clip.format.subsampling_h)],opt_level=1)
+        if y5g:
+            return core.llvmexpr.Expr(clip,[meow(),meow(2**clip.format.subsampling_w,2**clip.format.subsampling_h)],opt_level=1)
+        else:
+            return core.akarin.Expr(clip,[meow(),meow(2**clip.format.subsampling_w,2**clip.format.subsampling_h)])
     else:
-        return core.llvmexpr.Expr(clip,meow(),opt_level=1)
+        if y5g:
+            return core.llvmexpr.Expr(clip,meow(),opt_level=1)
+        else:
+            return core.akarin.Expr(clip,meow())
