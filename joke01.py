@@ -40,9 +40,10 @@ def debit(src,depth=1,dither=0,fulls=None,fulld=None,cs=None,cs2=None,count=None
     if depth>=8 or (count!=None and count>=256):
         raise ValueError("use normal dither for >8bit bro")
     isrgb=src.format.color_family==vs.RGB
+    isgray=src.format.color_family==vs.GRAY
     if fulls==None: fulls=True if isrgb else False
     if fulld==None: fulld=True if isrgb else False
-    if cs==None: cs=False if isrgb else True
+    if cs==None: cs=False if isrgb or isgray else True
     if cs2==None: cs2=False
     if src.format.sample_type==vs.FLOAT:
         src=core.resize.Point(src,format=src.format.replace(sample_type=vs.INTEGER,bits_per_sample=16),range_s='full')
@@ -59,7 +60,7 @@ def debit(src,depth=1,dither=0,fulls=None,fulld=None,cs=None,cs2=None,count=None
         count=2**depth
     scaling=255/(count-1)
     scalingc=scaling if not cs2 else scaling/2
-    cs=cs or cs2
+    cs=(cs or cs2) and not isgray
     last=src
     if not fulls:
         last=zvs.setrange(last,'rm')
@@ -131,7 +132,7 @@ def naive32i(src,shift=0):
 
 # the grey from black and white
 # prepare your frame props btw, im relying on auto selection of core.resize
-def grey(src,fp32=1,matrix='709',linearize=1):
+def grey(src,fp32=1,matrix='601',linearize=1):
     if src.format.color_family==vs.GRAY:
         return src
     elif src.format.color_family==vs.YUV:
