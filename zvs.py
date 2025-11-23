@@ -40,7 +40,6 @@ functions:
 - simplebitdepth (sb for short)
 - framehash
 - outputs
-- pickframes
 '''
 
 try:
@@ -1287,12 +1286,6 @@ def outputs(clips):
             node.set_output(index)
     else:
         clips.set_output()
-
-
-def pickframes(clip,indices):
-    indices = set(indices)
-    secidni = [i for i in range(clip.num_frames) if not i in indices]
-    return core.std.DeleteFrames(clip,secidni)
 
 
 ########################################################
