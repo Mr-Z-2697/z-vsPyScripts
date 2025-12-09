@@ -3,7 +3,7 @@ core=vs.core
 import zvs
 __all__=['lrnoise','debit','naive32k','naive32i']
 
-def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=False,mdg=False,azmdg={},cdif=False,fnoise=None):
+def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=False,mdg=False,azmdg={},cdif=False,fnoise=None,avg=[]):
     src=zvs.simplebitdepth(src,16)
     za={'thsad':1000,'truemotion':True}
     za.update(azmdg)
@@ -23,6 +23,7 @@ def lrnoise(src,lr=(1280,720),gy=50,gc=0,hc=0,vc=0,con=0,seed=1,opt=0,a1=20,adg=
     else:
         nd=core.std.MakeDiff(lrn,lr)
     if mdg: nd=zvs.zmdg(nd,mvin=mvd,**za)
+    if avg: nd=nd.std.AverageFrames(avg)
     ndhr=nd.fmtc.resample(last.width,last.height,kernel='gaussian',a1=a1)
     if cdif:
         last=zvs.cdif(last,ndhr,1)
