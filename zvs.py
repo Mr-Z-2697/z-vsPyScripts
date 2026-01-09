@@ -1,4 +1,4 @@
-__version__=str(1763916847/2**31)
+__version__=str(1767939314/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -832,7 +832,7 @@ bsbd=badlyscaledborderdetect
 
 #rescale and try to unfuck border, target on highly specific situation
 #ALWAYS DO TESTS BEFORE USE!
-def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,border_handling=0,ignore_mask=None,taps=3,nns=3,nsize=1,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,cuth=1,cutv=1,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
+def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_clip=None,mask_dif_pix=2.5,kernel='bilinear',b=0,c=0.5,border_handling=0,ignore_mask=None,taps=3,nns=3,nsize=1,qual=2,pscrn=1,show='result',offst1=1,offsl1=1,offst2=1/3,offsl2=1/3,cuth=1,cutv=1,down_kernel=None,post_kernel='bicubic',nns2=None,nsize2=None,qual2=None,pscrn2=None,rim=64,border=4,bc=1,rc=3,linear=False,sigmoid=False,custom_nnedi3down=False,nnrs_kernel=None,**args):
     if src.format.bits_per_sample!=16:src=src.fmtc.bitdepth(bits=16)
     last=src
     srcw,srch=src.width,src.height
@@ -908,10 +908,10 @@ def rescaleandtrytounfuckborders(src,w=None,h=None,mask=True,mopf=None,mask_gen_
     if show=='border':
         luma_rescale=luma
     elif callable(custom_nnedi3down):
-        luma_rescale=Nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1)
+        luma_rescale=Nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1,kernel=nnrs_kernel)
         luma_rescale=custom_nnedi3down(luma_rescale,srcw,srch).fmtc.bitdepth(bits=16)
     else:
-        luma_rescale=Nnrs.nnedi3_resample(luma_de,srcw,srch,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1).fmtc.bitdepth(bits=16)
+        luma_rescale=Nnrs.nnedi3_resample(luma_de,srcw,srch,qual=qual,nsize=nsize,nns=nns,pscrn=pscrn,src_top=-offst1,src_left=-offsl1,kernel=nnrs_kernel).fmtc.bitdepth(bits=16)
     luma_rescale=core.std.MaskedMerge(luma_rescale,luma_edge,bordermask(luma,*[border]*4))
 
     luma_fixedge=core.edgefixer.Continuity(luma,left=bc,right=bc,top=bc,bottom=bc,radius=rc)
@@ -1529,16 +1529,17 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
     mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
+    nnrs_kernel=args.get("nnrs_kernel")
 
     if sigmoid:
         luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
     elif linear:
         luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
     if callable(custom_nnedi3down):
-        luma_rescale=nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode)
+        luma_rescale=nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,kernel=nnrs_kernel)
         luma_rescale=custom_nnedi3down(luma_rescale,src_w,src_h).fmtc.bitdepth(bits=16)
     else:
-        luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
+        luma_rescale=nnrs.nnedi3_resample(luma_de,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,kernel=nnrs_kernel).fmtc.bitdepth(bits=16)
 
     if mask:
         if not isinstance(mask_gen_clip,vs.VideoNode):
@@ -1638,6 +1639,7 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
     mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
+    nnrs_kernel=args.get("nnrs_kernel")
 
     if sigmoid:
         luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
@@ -1646,10 +1648,10 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     if callable(custom_nnedi3down):
         _cargs=cargs.nnrs_gen()
         del _cargs['target_width'],_cargs['target_height']
-        luma_rescale=nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,**_cargs)
+        luma_rescale=nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,kernel=nnrs_kernel,**_cargs)
         luma_rescale=custom_nnedi3down(luma_rescale,src_w,src_h).fmtc.bitdepth(bits=16)
     else:
-        luma_rescale=nnrs.nnedi3_resample(luma_de,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
+        luma_rescale=nnrs.nnedi3_resample(luma_de,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,kernel=nnrs_kernel,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
 
     def calc(n,f):
         fout=f[1].copy()
@@ -1815,6 +1817,7 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNod
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
     mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
+    nnrs_kernel=args.get("nnrs_kernel")
     if mode=='eval':
         return core.std.ModifyFrame(clipo,[diff,clipo],calc)
     if sigmoid:
@@ -1822,10 +1825,10 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNod
     elif linear:
         descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
     if callable(custom_nnedi3down):
-        rescale=nnrs.nnedi3_resample(descaled,descaled.width*2,descaled.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode)
+        rescale=nnrs.nnedi3_resample(descaled,descaled.width*2,descaled.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,kernel=nnrs_kernel)
         rescale=custom_nnedi3down(rescale,src_w,src_h).fmtc.bitdepth(bits=16)
     else:
-        rescale=nnrs.nnedi3_resample(descaled,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode).fmtc.bitdepth(bits=16)
+        rescale=nnrs.nnedi3_resample(descaled,src_w,src_h,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,kernel=nnrs_kernel).fmtc.bitdepth(bits=16)
 
     if mask is True:
         if not isinstance(mask_gen_clip,vs.VideoNode):
@@ -1900,6 +1903,7 @@ def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask
     pscrn=1 if args.get("pscrn") is None else args.get("pscrn")
     exp=args.get("exp")
     mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
+    nnrs_kernel=args.get("nnrs_kernel")
     if mode=='eval':
         return core.std.ModifyFrame(clipo,[diff,clipo],calc)
     if sigmoid:
@@ -1910,10 +1914,10 @@ def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask
     if callable(custom_nnedi3down):
         _cargs=cargs.nnrs_gen()
         del _cargs['target_width'],_cargs['target_height']
-        rescale=nnrs.nnedi3_resample(descaled,descaled.width*2,descaled.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,**_cargs)
+        rescale=nnrs.nnedi3_resample(descaled,descaled.width*2,descaled.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,kernel=nnrs_kernel,**_cargs)
         rescale=custom_nnedi3down(rescale,src_w,src_h).fmtc.bitdepth(bits=16)
     else:
-        rescale=nnrs.nnedi3_resample(descaled,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
+        rescale=nnrs.nnedi3_resample(descaled,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,kernel=nnrs_kernel,**cargs.nnrs_gen()).fmtc.bitdepth(bits=16)
 
     if mask is True:
         if not isinstance(mask_gen_clip,vs.VideoNode):
