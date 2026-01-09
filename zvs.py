@@ -1,4 +1,4 @@
-__version__=str(1767939751/2**31)
+__version__=str(1767981809/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1465,7 +1465,7 @@ def bm3d_core(clip,ref=None,mode="cpu",sigma=3.0,block_step=8,bm_range=9,radius=
 #mask_gen_clip: an alternative clip can be provided for diff mask generation
 #mask_operate_func: a function can be specified for mask operations after generation (e.g. expand, inpand and more)
 #linear, sigmoid: do descale in linear or sigmoid light
-def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
+def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,show="result",postfilter_descaled=None,mthr:list[int]=[2,2],mask_gen_clip=None,mask_operate_func=None,linear_usez=False,linear=False,sigmoid=False,custom_nnedi3down=False,**args):
     if src.format.color_family not in [vs.YUV,vs.GRAY]:
         raise ValueError("input clip should be YUV or GRAY!")
 
@@ -1496,7 +1496,10 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     if sigmoid:
         luma=core.fmtc.transfer(luma,transs=tin,transd='sigmoid',fulls=fulls,fulld=fulld)
     elif linear:
-        luma=core.fmtc.transfer(luma,transs=tin,transd='linear',fulls=fulls,fulld=fulld)
+        if linear_usez:
+            luma=core.resize.Point(luma,transfer_s='linear') # set frame props before use!
+        else:
+            luma=core.fmtc.transfer(luma,transs=tin,transd='linear',fulls=fulls,fulld=fulld)
     ####
     if kernel in ["Debilinear","Despline16","Despline36","Despline64"]:
         luma_de=eval("core.descale.{k}(luma.fmtc.bitdepth(bits=32),w,h,border_handling=border_handling,ignore_mask=ignore_mask)".format(k=kernel))
@@ -1518,7 +1521,10 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     if sigmoid:
         luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
     elif linear:
-        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
+        if linear_usez:
+            luma_de=core.resize.Point(luma_de.fmtc.bitdepth(bits=16),transfer=src.get_frame(0).props.get('_Transfer'))
+        else:
+            luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
 
     if postfilter_descaled is None:
         pass
