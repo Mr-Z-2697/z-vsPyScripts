@@ -1,4 +1,4 @@
-__version__=str(1767939314/2**31)
+__version__=str(1767939751/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -1515,6 +1515,11 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
         luma_de=luma_de[::2]
         luma_up=luma_up[::2]
 
+    if sigmoid:
+        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
+    elif linear:
+        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
+
     if postfilter_descaled is None:
         pass
     elif callable(postfilter_descaled):
@@ -1531,10 +1536,6 @@ def rescale(src:vs.VideoNode,kernel:str,w=None,h=None,mask=True,mask_dif_pix=2,s
     mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
     nnrs_kernel=args.get("nnrs_kernel")
 
-    if sigmoid:
-        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
-    elif linear:
-        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
     if callable(custom_nnedi3down):
         luma_rescale=nnrs.nnedi3_resample(luma_de,luma_de.width*2,luma_de.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,kernel=nnrs_kernel)
         luma_rescale=custom_nnedi3down(luma_rescale,src_w,src_h).fmtc.bitdepth(bits=16)
@@ -1625,6 +1626,11 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
 
     diff = core.std.Expr([luma.fmtc.bitdepth(bits=32), luma_up], f'x y - abs dup 0.015 > swap 0 ?').std.Crop(10, 10, 10, 10).std.PlaneStats()
 
+    if sigmoid:
+        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
+    elif linear:
+        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
+
     if postfilter_descaled is None:
         pass
     elif callable(postfilter_descaled):
@@ -1641,10 +1647,6 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
     mode=nnrs_mode_default if args.get("mode") is None else args.get("mode")
     nnrs_kernel=args.get("nnrs_kernel")
 
-    if sigmoid:
-        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
-    elif linear:
-        luma_de=core.fmtc.transfer(luma_de.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
     if callable(custom_nnedi3down):
         _cargs=cargs.nnrs_gen()
         del _cargs['target_width'],_cargs['target_height']
@@ -1803,13 +1805,6 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNod
         fout.props["diff"]=f[0].props["PlaneStatsAverage"]*multiple
         return fout
 
-    if postfilter_descaled is None:
-        pass
-    elif callable(postfilter_descaled):
-        descaled=postfilter_descaled(descaled)
-    else:
-        raise ValueError("postfilter_descaled must be a function")
-
     nsize=1 if args.get("nsize") is None else args.get("nsize")
     nns=args.get("nns")
     qual=2 if args.get("qual") is None else args.get("qual")
@@ -1820,10 +1815,19 @@ def MRcore(clip:vs.VideoNode,kernel:str,w:int,h:int,mask: Union[bool,vs.VideoNod
     nnrs_kernel=args.get("nnrs_kernel")
     if mode=='eval':
         return core.std.ModifyFrame(clipo,[diff,clipo],calc)
+
     if sigmoid:
         descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
     elif linear:
         descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
+
+    if postfilter_descaled is None:
+        pass
+    elif callable(postfilter_descaled):
+        descaled=postfilter_descaled(descaled)
+    else:
+        raise ValueError("postfilter_descaled must be a function")
+
     if callable(custom_nnedi3down):
         rescale=nnrs.nnedi3_resample(descaled,descaled.width*2,descaled.height*2,nsize=nsize,nns=nns,qual=qual,etype=etype,pscrn=pscrn,exp=exp,mode=mode,kernel=nnrs_kernel)
         rescale=custom_nnedi3down(rescale,src_w,src_h).fmtc.bitdepth(bits=16)
@@ -1889,13 +1893,6 @@ def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask
         fout.props["diff"]=f[0].props["PlaneStatsAverage"]*multiple
         return fout
 
-    if postfilter_descaled is None:
-        pass
-    elif callable(postfilter_descaled):
-        descaled=postfilter_descaled(descaled)
-    else:
-        raise ValueError("postfilter_descaled must be a function")
-
     nsize=1 if args.get("nsize") is None else args.get("nsize")
     nns=args.get("nns")
     qual=2 if args.get("qual") is None else args.get("qual")
@@ -1906,10 +1903,18 @@ def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask
     nnrs_kernel=args.get("nnrs_kernel")
     if mode=='eval':
         return core.std.ModifyFrame(clipo,[diff,clipo],calc)
+
     if sigmoid:
         descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='sigmoid',transd=tin,fulls=fulld,fulld=fulls)
     elif linear:
         descaled=core.fmtc.transfer(descaled.fmtc.bitdepth(bits=16),transs='linear',transd=tin,fulls=fulld,fulld=fulls)
+
+    if postfilter_descaled is None:
+        pass
+    elif callable(postfilter_descaled):
+        descaled=postfilter_descaled(descaled)
+    else:
+        raise ValueError("postfilter_descaled must be a function")
 
     if callable(custom_nnedi3down):
         _cargs=cargs.nnrs_gen()
