@@ -1,4 +1,4 @@
-__version__=str(1767981809/2**31)
+__version__=str(1768110024/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -7,6 +7,7 @@ import mvsfunc as mvf
 from functools import partial
 from pathlib import Path
 from typing import Any, Mapping, Optional, Sequence, Union
+import math
 import nnedi3_resample as nnrs
 
 '''
@@ -1086,7 +1087,6 @@ def gaussianblurfmtc(src,sigma=1,stdev=None,mode='impulse',planes=[0,1,2],r=None
         last=core.fmtc.resample(src,dw,dh,kernel=kd,css='444') if stdev>1 else src
         last=core.fmtc.resample(last,sw,sh,kernel='gauss',a1=rsa1,csp=src.format.replace(bits_per_sample=16),fv=-1,fh=-1)
     elif mode=='impulse':
-        import math
         if impdr<1: raise ValueError('impdr<1, don\'t do it bruh.')
         dw,dh=round(sw/impdr) if hb else sw,round(sh/impdr) if vb else sh
         stdev/=impdr
@@ -1120,7 +1120,6 @@ gbf=gaussianblurfmtc
 
 #curved/cursed diff
 def cdif(clipa,clipb,merge=False,p=16384,mode='sine',lb=10):
-    import math
     import numpy as np
     if not clipa.format.bits_per_sample==16: clipa=clipa.fmtc.bitdepth(bits=16)
     if not clipb.format.bits_per_sample==16: clipb=clipb.fmtc.bitdepth(bits=16)
@@ -1154,7 +1153,6 @@ Corps_Diplomatique_of_Interstellar_Ferrets=cdif
 #what?
 
 def plotcdif(merge=False,p=16384,mode='sine',lb=10):
-    import math
     import matplotlib.pyplot as plt
     if not merge:
         if mode=='sine':
@@ -1611,7 +1609,7 @@ def rescalef(src: vs.VideoNode,kernel: str,w=None,h=None,bh=None,bw=None,mask=Tr
         luma=core.fmtc.transfer(luma,transs=tin,transd='sigmoid',fulls=fulls,fulld=fulld)
     elif linear:
         luma=core.fmtc.transfer(luma,transs=tin,transd='linear',fulls=fulls,fulld=fulld)
-    cargs=xvs.cropping_args(src.width,src.height,h,bh,bw)
+    cargs=cropping_args(src.width,src.height,h,bh,bw)
     ####
     if kernel in ["Debilinear","Despline16","Despline36","Despline64"]:
         luma_de=eval("core.descale.{k}(luma.fmtc.bitdepth(bits=32),border_handling=border_handling,ignore_mask=ignore_mask,**cargs.descale_gen())".format(k=kernel))
@@ -1881,7 +1879,7 @@ def MRcoref(clip:vs.VideoNode,kernel:str,w:float,h:float,bh:int,bw:int=None,mask
         clip=core.fmtc.transfer(clip,transs=tin,transd='sigmoid',fulls=fulls,fulld=fulld)
     elif linear:
         clip=core.fmtc.transfer(clip,transs=tin,transd='linear',fulls=fulls,fulld=fulld)
-    cargs=xvs.cropping_args(src_w,src_h,h,bh,bw)
+    cargs=cropping_args(src_w,src_h,h,bh,bw)
     clip32=core.fmtc.bitdepth(clip,bits=32)
     bct='b=b,c=c' if kernel.lower()=='bicubic' else 'taps=taps' if kernel.lower()=='lanczos' else ''
     descaled=eval(f'core.descale.De{kernel.lower()}(clip32,**cargs.descale_gen(),border_handling=border_handling,ignore_mask=ignore_mask,{bct})')
@@ -2180,3 +2178,60 @@ def getsharpness(clip,show=False):
     dif=core.std.PlaneStats(dif)
     last=core.std.ModifyFrame(clip,[dif,clip],calc)
     return core.text.FrameProps(last,"sharpness",scale=2) if show else last
+
+#from xvs
+class cropping_args:
+    #rewrite from function descale_cropping_args in getfnative
+    def __init__(self,width:int,height:int,src_height: float, base_height: int, base_width= None, mode: str = 'wh'):
+        assert base_height >= src_height
+        self.mode=mode
+
+        self.width=width
+        self.height=height
+        self.base_width=self.getw(base_height) if base_width is None else base_width
+        self.base_height=base_height
+        self.src_width=src_height * width / height
+        self.src_height=src_height
+
+        self.cropped_width=self.base_width - 2 * math.floor((self.base_width - self.src_width) / 2)
+        self.cropped_height=self.base_height - 2 * math.floor((self.base_height - self.src_height) / 2)
+
+    def descale_gen(self):
+        args={"width":self.width,"height":self.height}
+        argsw={"width":self.cropped_width,"src_width":self.src_width,"src_left":(self.cropped_width-self.src_width)/2}
+        argsh={"height":self.cropped_height,"src_height":self.src_height,"src_top":(self.cropped_height-self.src_height)/2}
+
+        if "w" in self.mode:
+            args.update(argsw)
+        if "h" in self.mode:
+            args.update(argsh)
+        return args
+
+    def resize_gen(self):
+        args={"width":self.width,"height":self.height}
+        argsw={"src_width":self.src_width,"src_left":(self.cropped_width-self.src_width)/2}
+        argsh={"src_height":self.src_height,"src_top":(self.cropped_height-self.src_height)/2}
+
+        if "w" in self.mode:
+            args.update(argsw)
+        if "h" in self.mode:
+            args.update(argsh)
+        return args
+
+    def nnrs_gen(self):
+        args={"target_width":self.width,"target_height":self.height}
+        argsw={"src_width":self.src_width,"src_left":(self.cropped_width-self.src_width)/2}
+        argsh={"src_height":self.src_height,"src_top":(self.cropped_height-self.src_height)/2}
+
+        if "w" in self.mode:
+            args.update(argsw)
+        if "h" in self.mode:
+            args.update(argsh)
+        return args
+
+    def getw(self, height: int):
+        width = math.ceil(height * self.width / self.height)
+        if height % 2 == 0:
+            width = width // 2 * 2
+        return width
+
