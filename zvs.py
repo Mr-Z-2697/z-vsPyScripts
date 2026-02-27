@@ -1,4 +1,4 @@
-__version__=str(1768110024/2**31)
+__version__=str(1772175513/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -993,15 +993,26 @@ def go444keepuv(src,dir='down',clc=True,left=True,top=False,resampler=None):
 
 
 def setrange(src,range):
+    newapi = core.api_version.api_major >= 4 and core.api_version.api_minor >= 2
+    if newapi:
+        propname='_Range'
+        _pc=1
+        _tv=0
+    else:
+        propname='_ColorRange'
+        _pc=0
+        _tv=1
     if range in ('remove','rm','del'):
-        return src.std.RemoveFrameProps('_ColorRange')
+        return src.std.RemoveFrameProps(propname)
     if range in ('full','pc','jpeg'):
-        rangeval=0
+        rangeval=_pc
     elif range in ('limited','tv','mpeg'):
-        rangeval=1
+        rangeval=_tv
+    elif isinstance(range, int):
+        rangeval=range
     else:
         raise ValueError
-    return src.std.SetFrameProps(_ColorRange=rangeval)
+    return src.std.SetFrameProp(propname,rangeval)
 
 
 def setmatrix(src,matrix):
