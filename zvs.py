@@ -1,4 +1,4 @@
-__version__=str(1789154940/2**31)
+__version__=str(1789156170/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -148,7 +148,7 @@ def zmdg_mvu(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad
         if isinstance(resize_pad,bool):
             if isinstance(pref,vs.VideoNode) and pref.width==src.width and pref.height==src.height: pref=rpclip(pref,blksize)
             if isinstance(alim_ref,vs.VideoNode) and alim_ref.width==src.width and alim_ref.height==src.height: alim_ref=rpclip(alim_ref,blksize)
-            src=zvs.rpclip(src,blksize)
+            src=rpclip(src,blksize)
         elif isinstance(resize_pad,int):
             if isinstance(pref,vs.VideoNode) and pref.width==src.width and pref.height==src.height: pref=rpclip(pref,resize_pad)
             if isinstance(alim_ref,vs.VideoNode) and alim_ref.width==src.width and alim_ref.height==src.height: alim_ref=rpclip(alim_ref,resize_pad)
@@ -203,38 +203,39 @@ def zmdg_mvu(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad
         if isinstance(refinemotion,vs.VideoNode): #i can't remember why i did this really, but it's harmless just leave it
             sup3=refinemotion
         else:
-            sup3=core.mvu.Super(last,hpad=mv_pad[2],vpad=mv_pad[3],sharp=sharp,levels=1,pel=rmpel,**sargs) if sup3==0 else sup3
+            sup3=core.mvu.Super(last,pad=mv_pad[2:4],blksize=blksize,overlap=overlap,sharp=sharp,onelevel=1,pel=rmpel,**sargs) if sup3==0 else sup3
 
     mvfw,mvbw=[],[]
     if mvd_in:
-        _mvfw=mvin['mvfw']
         _mvbw=mvin['mvbw']
+        _mvfw=mvin['mvfw']
+        _mvs=_mvbw+_mvfw
+        _mvs[::2]=_mvbw
+        _mvs[1::2]=_mvfw
         if tr>mvin['tr']:raise ValueError
         if mvinrm:
+            _mvs=core.mv.Recalculate(sup3,_mvs)
             for i in range(tr):
-                _fw=core.mv.Recalculate(sup3,_mvfw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
-                _bw=core.mv.Recalculate(sup3,_mvbw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
-                mvfw.append(_fw)
+                _bw=_mvs[i*2]
+                _fw=_mvs[i*2+1]
                 mvbw.append(_bw)
+                mvfw.append(_fw)
                 if mvupd:
-                    _mvfw[i]=_fw
                     _mvbw[i]=_bw
+                    _mvfw[i]=_fw
         else:
-            mvfw=_mvfw
             mvbw=_mvbw
+            mvfw=_mvfw
     else:
-        for i in range(1,tr+1):
-            _fw=core.mvu.Analyse(sup,delta=-i,blksize=blksize,overlap=overlap,chroma=chromamv,**aargs)
-            _bw=core.mvu.Analyse(sup,delta=i,blksize=blksize,overlap=overlap,chroma=chromamv,**aargs)
-            if refinemotion:
-                _fw=core.mv.Recalculate(sup3,_fw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
-                _bw=core.mv.Recalculate(sup3,_bw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
-            mvfw.append(_fw)
-            mvbw.append(_bw)
+        _mvs=core.mvu.AnalyseMany(sup,radius=tr,blksize=blksize,overlap=overlap,chroma=chromamv,**aargs)
+        if refinemotion:
+            _mvs=core.mvu.Recalculate(sup3,_mvs)
+        for i in range(tr):
+            mvbw.append(_mvs[i*2])
+            mvfw.append(_mvs[i*2+1])
 
-    mv_list_string=','.join([f'mvbw[{j}],mvfw[{j}]' for j in range(tr)])
     if mvout:
-        mvd={'mvfw':mvfw,'mvbw':mvbw,'tr':tr,'mvlist':mv_list_string}
+        mvd={'mvfw':mvfw,'mvbw':mvbw,'tr':tr}
         if mvout_sup:
             mvd['sup']=[sup,sup2,sup3] if refinemotion else [sup,sup2]
         return mvd
