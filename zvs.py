@@ -1,4 +1,4 @@
-__version__=str(1772175513/2**31)
+__version__=str(1789154940/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -143,6 +143,126 @@ alim_cdif: use cdif insteal of std.MakeDiff in auto limit.
 lf: provide your own func for limit (does not override the "limit" arg of mdegrain) eg: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20) or a number represents "thr" in equivalent of the example func.
 elast: if using default "lf" func (i.e. passing in a number as lf), this controls the "elast" of it. otherwise this arg is ignored.
 '''
+def zmdg_mvu(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=2,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,limit=None,lf=None,elast=20,sargs={},aargs={},rargs={},alim_ref=None,alim_cdif=False,**args):
+    if resize_pad:
+        if isinstance(resize_pad,bool):
+            if isinstance(pref,vs.VideoNode) and pref.width==src.width and pref.height==src.height: pref=rpclip(pref,blksize)
+            if isinstance(alim_ref,vs.VideoNode) and alim_ref.width==src.width and alim_ref.height==src.height: alim_ref=rpclip(alim_ref,blksize)
+            src=zvs.rpclip(src,blksize)
+        elif isinstance(resize_pad,int):
+            if isinstance(pref,vs.VideoNode) and pref.width==src.width and pref.height==src.height: pref=rpclip(pref,resize_pad)
+            if isinstance(alim_ref,vs.VideoNode) and alim_ref.width==src.width and alim_ref.height==src.height: alim_ref=rpclip(alim_ref,resize_pad)
+            src=rpclip(src,resize_pad)
+        else:
+            raise ValueError
+    mvd_in=isinstance(mvin,dict)
+    if thsadc==None:
+        thsadc=thsad//2
+    last=src
+    if pref==None:
+        pref=last
+    if limit!=None and limit<0:
+        limit=None
+        alim=True
+        if alim_ref==None:
+            alim_ref=pref
+    else:
+        alim=False
+    if not chromamv:
+        pref=core.resize.Point(pref,range_in_s='limited',range_s='full')
+    if tr==None:
+        if not mvd_in:
+            tr=2
+        else:
+            tr=mvin['tr']
+    if overlap==None: overlap=blksize//2
+    if rmblksize==None: rmblksize=blksize//2
+    if rmoverlap==None: rmoverlap=rmblksize//2
+    if rmthsad==None: rmthsad=thsad//2
+    if rmpel==None: rmpel=pel
+    if rmchromamv==None: rmchromamv=chromamv
+    if rmtruemotion==None: rmtruemotion=truemotion
+    if rmdct==None: rmdct=dct
+    if mvupd==None: mvupd=mvinrm
+    if mv_pad==None:
+        mv_pad=[blksize]*2+[rmblksize]*2
+    elif isinstance(mv_pad,int):
+        mv_pad=[mv_pad]*4
+
+    sup,sup2,sup3=0,0,0
+    if mvd_in:
+        supin=mvin.get('sup')
+        if supin!=None:
+            sup,sup2=supin[0],supin[1]
+            if refinemotion and len(supin)==3:
+                sup3=supin[2]
+
+    sup=core.mvu.Super(pref,pad=mv_pad[:2],blksize=blksize,overlap=overlap,sharp=sharp,rfilter=rfilter,pel=pel,**sargs) if sup==0 else sup
+    sup2=core.mvu.Super(last,pad=mv_pad[:2],blksize=blksize,overlap=overlap,sharp=sharp,onelevel=1,pel=pel,**sargs) if sup2==0 else sup2
+    if refinemotion:
+        if isinstance(refinemotion,vs.VideoNode): #i can't remember why i did this really, but it's harmless just leave it
+            sup3=refinemotion
+        else:
+            sup3=core.mvu.Super(last,hpad=mv_pad[2],vpad=mv_pad[3],sharp=sharp,levels=1,pel=rmpel,**sargs) if sup3==0 else sup3
+
+    mvfw,mvbw=[],[]
+    if mvd_in:
+        _mvfw=mvin['mvfw']
+        _mvbw=mvin['mvbw']
+        if tr>mvin['tr']:raise ValueError
+        if mvinrm:
+            for i in range(tr):
+                _fw=core.mv.Recalculate(sup3,_mvfw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
+                _bw=core.mv.Recalculate(sup3,_mvbw[i],rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
+                mvfw.append(_fw)
+                mvbw.append(_bw)
+                if mvupd:
+                    _mvfw[i]=_fw
+                    _mvbw[i]=_bw
+        else:
+            mvfw=_mvfw
+            mvbw=_mvbw
+    else:
+        for i in range(1,tr+1):
+            _fw=core.mvu.Analyse(sup,delta=-i,blksize=blksize,overlap=overlap,chroma=chromamv,**aargs)
+            _bw=core.mvu.Analyse(sup,delta=i,blksize=blksize,overlap=overlap,chroma=chromamv,**aargs)
+            if refinemotion:
+                _fw=core.mv.Recalculate(sup3,_fw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
+                _bw=core.mv.Recalculate(sup3,_bw,rmthsad,blksize=rmblksize,overlap=rmoverlap,truemotion=rmtruemotion,chroma=rmchromamv,dct=rmdct,**rargs)
+            mvfw.append(_fw)
+            mvbw.append(_bw)
+
+    mv_list_string=','.join([f'mvbw[{j}],mvfw[{j}]' for j in range(tr)])
+    if mvout:
+        mvd={'mvfw':mvfw,'mvbw':mvbw,'tr':tr,'mvlist':mv_list_string}
+        if mvout_sup:
+            mvd['sup']=[sup,sup2,sup3] if refinemotion else [sup,sup2]
+        return mvd
+
+    _mvs=mvbw+mvfw
+    _mvs[::2]=mvbw
+    _mvs[1::2]=mvfw
+    last=core.mvu.Degrain(last,sup2,_mvs,thsad=[thsad,thsadc],thscd1=thscd1,thscd2=100*thscd2/255,limit=limit)
+    if alim:
+        neutral=1 << (src.format.bits_per_sample-1)
+        pdiff=core.std.MakeDiff(src,alim_ref) if not alim_cdif else cdif(src,alim_ref)
+        mdiff=core.std.MakeDiff(src,last) if not alim_cdif else cdif(src,last)
+        expr=f'x {neutral} - abs y {neutral} - abs < x y ?'
+        ddiff=core.std.Expr([pdiff,mdiff],expr=[expr])
+        last=core.std.MakeDiff(src,ddiff) if not alim_cdif else cdif(src,ddiff,merge=-1)
+    if callable(lf):
+        last=lf(last,src)
+    elif isinstance(lf,(int,float)):
+        last=mvf.LimitFilter(last,src,thr=lf,elast=elast)
+    if cs:
+        last=rpfilter(last,src,filter=lambda x,y: ContraSharpening(x,y,radius=csrad,rep=csrep,planes=cspl),psize=4)
+    if resize_pad:
+        if isinstance(resize_pad,bool):
+            last=last.std.Crop(*[blksize]*4)
+        elif isinstance(resize_pad,int):
+            last=last.std.Crop(*[resize_pad]*4)
+    return last
+
 def zmdg(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=4,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,limit=None,lf=None,elast=20,sargs={},aargs={},rargs={},alim_ref=None,alim_cdif=False,**args):
     if resize_pad:
         if isinstance(resize_pad,bool):
