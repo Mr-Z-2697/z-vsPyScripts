@@ -1,4 +1,4 @@
-__version__=str(1789156170/2**31)
+__version__=str(1789294408/2**31)
 import os,sys
 import vapoursynth as vs
 from vapoursynth import core
@@ -143,7 +143,7 @@ alim_cdif: use cdif insteal of std.MakeDiff in auto limit.
 lf: provide your own func for limit (does not override the "limit" arg of mdegrain) eg: lambda x,y:mvf.LimitFilter(x,y,thr=0.5,elast=20) or a number represents "thr" in equivalent of the example func.
 elast: if using default "lf" func (i.e. passing in a number as lf), this controls the "elast" of it. otherwise this arg is ignored.
 '''
-def zmdg_mvu(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=2,dct=0,truemotion=True,thscd1=400,thscd2=130,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmdct=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,limit=None,lf=None,elast=20,sargs={},aargs={},rargs={},alim_ref=None,alim_cdif=False,**args):
+def zmdg_mvu(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad=True,overlap=None,pel=1,chromamv=True,sharp=2,rfilter=2,satd=0,truemotion=True,thscd1=400,thscd2=51,pref=None,cs=False,csrad=1,csrep=14,cspl=None,refinemotion=False,rmblksize=None,rmoverlap=None,rmpel=None,rmchromamv=None,rmtruemotion=None,rmthsad=None,rmsatd=None,mvout=False,mvout_sup=False,mvin=None,mvinrm=False,mvupd=None,limit=None,lf=None,elast=20,sargs={},aargs={},rargs={},alim_ref=None,alim_cdif=False,**args):
     if resize_pad:
         if isinstance(resize_pad,bool):
             if isinstance(pref,vs.VideoNode) and pref.width==src.width and pref.height==src.height: pref=rpclip(pref,blksize)
@@ -182,7 +182,7 @@ def zmdg_mvu(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad
     if rmpel==None: rmpel=pel
     if rmchromamv==None: rmchromamv=chromamv
     if rmtruemotion==None: rmtruemotion=truemotion
-    if rmdct==None: rmdct=dct
+    if rmsatd==None: rmsatd=satd
     if mvupd==None: mvupd=mvinrm
     if mv_pad==None:
         mv_pad=[blksize]*2+[rmblksize]*2
@@ -214,7 +214,7 @@ def zmdg_mvu(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad
         _mvs[1::2]=_mvfw
         if tr>mvin['tr']:raise ValueError
         if mvinrm:
-            _mvs=core.mv.Recalculate(sup3,_mvs)
+            _mvs=core.mvu.Recalculate(sup3,_mvs,thsad=rmthsad,blksize=rmblksize,overlap=rmoverlap,chroma=rmchromamv,satd=rmsatd,**rargs)
             for i in range(tr):
                 _bw=_mvs[i*2]
                 _fw=_mvs[i*2+1]
@@ -227,9 +227,9 @@ def zmdg_mvu(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad
             mvbw=_mvbw
             mvfw=_mvfw
     else:
-        _mvs=core.mvu.AnalyseMany(sup,radius=tr,blksize=blksize,overlap=overlap,chroma=chromamv,**aargs)
+        _mvs=core.mvu.AnalyseMany(sup,radius=tr,blksize=blksize,overlap=overlap,chroma=chromamv,satd=satd,**aargs)
         if refinemotion:
-            _mvs=core.mvu.Recalculate(sup3,_mvs)
+            _mvs=core.mvu.Recalculate(sup3,_mvs,thsad=rmthsad,blksize=rmblksize,overlap=rmoverlap,chroma=rmchromamv,satd=rmsatd,**rargs)
         for i in range(tr):
             mvbw.append(_mvs[i*2])
             mvfw.append(_mvs[i*2+1])
@@ -243,7 +243,8 @@ def zmdg_mvu(src,tr=None,thsad=100,thsadc=None,blksize=16,mv_pad=None,resize_pad
     _mvs=mvbw+mvfw
     _mvs[::2]=mvbw
     _mvs[1::2]=mvfw
-    last=core.mvu.Degrain(last,sup2,_mvs,thsad=[thsad,thsadc],thscd1=thscd1,thscd2=100*thscd2/255,limit=limit)
+    _sup=sup2 if not refinemotion else sup3
+    last=core.mvu.Degrain(last,_sup,_mvs,thsad=[thsad,thsadc],thscd1=thscd1,thscd2=thscd2,limit=limit)
     if alim:
         neutral=1 << (src.format.bits_per_sample-1)
         pdiff=core.std.MakeDiff(src,alim_ref) if not alim_cdif else cdif(src,alim_ref)
